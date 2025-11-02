@@ -1,0 +1,17 @@
+[project]
+name = "toxicity-detector"
+version = "0.1.0"
+description = "An LLM-based pipeline to detect toxic speech."
+readme = "README.md"
+authors = [
+    { name = "Sebastian Cacean", email = "sebastian.cacean@kit.edu" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+toxicity-detector = "toxicity_detector:main"
+
+[build-system]
+requires = ["uv_build>=0.8.19,<0.9.0"]
+build-backend = "uv_build"
