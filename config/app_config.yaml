@@ -1,0 +1,37 @@
+developer_mode: True
+# Currently used version for yaml output and yaml model config format (in case we change the format during test phases)
+# (version <1.0 indicates versions before public release of the demo app) 
+model_config_version: v0.3
+default_model_config_file: model_config_cv0.3_2024-11-24_v0.3.yaml
+# TODO: Mv everthing besides `example` fields to pipeline-config
+data_serialization:
+  # If True, the app will use the local data serialization (logs, model_config, result_data). 
+  # Otherwise, the app will use the Huggingface dataset.
+  local_serialization: True
+  hf_base_path: 'datasets/DebateLabKIT/toxicity-detector-appdata'
+  result_data_path: 'logs/result_data'
+  model_config_path: 'config'
+  #local_base_path: '.'
+  local_base_path: '/home/basti/Nextcloud/Documents/mindmaps/mind/projects/kideku/code/toxicity-detector'
+  log_path: 'logs'
+  subdirectory_construction: 'daily'
+  # Example will be loaded from Huggungface dataset (independent of `local_serialization`)
+  toxicity_examples_data_path: 'toxicity_example_data'
+  # can also be set in model_config, which takes precedence over this setting
+  toxicity_examples_data_file: 'toxicity_examples_detox_germeval21_n10000.csv'
+# TODO: should this also be part of the pipeline config?
+feedback:
+  likert_scale: 
+    absolutely_correct: "Stimmt absolut"
+    correct: "Stimmt"
+    suspension: "Unklar"
+    incorrect: "Stimmt nicht"
+    absolutely_incorrect: "Stimmt überhaupt nicht" 
+trigger_warning:
+  checkbox_label: "Die Hinweise habe ich zur Kenntnis genommen und der Speicherung der Daten stimme ich zu."
+  message: |
+    # Benutzunghinweise (*!vorläufige Formulierung!*)
+
+    + **Triggerwarnung:** Die Toxizitätdetektorapp enthält in Form von Beispielen Inhalte, die anstößig oder beunruhigend sein können. Alle Materialien dienen der Unterstützung von Forschungsarbeiten zur Verbesserung der Methoden zur Erkennung von Toxizität. Die enthaltenen Beispiele für Toxizität geben insbesondere nicht wieder, wie die Autoren über bestimmte Identitätsgruppen bzw. Personen denken. Die Beispiele stammen aus dem Korpus ...
+    + **Datenerhebung:** Die eingegebenen Textbeispiele und generierten Kategorisierungen werden für Forschungszwecke gespeichert und benutzt um die Performance von Modelle zu steigern. Darüberhinaus werden keine Daten gesammelt, insbesondere keine personenbezogenen Daten (sofern keine personenbezogenen Daten in das Textfeld eingetragen werden)
+

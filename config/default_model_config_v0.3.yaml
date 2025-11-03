@@ -1,0 +1,138 @@
+config_version: 'v0.3'
+used_chat_model: model_2
+# used data set for random example generation. currently one of:
+# - toxicity_examples_detox_germeval21_n10000.csv
+# - toxicity_examples_detox_germeval21_n5000.csv
+toxicity_examples_data_file: 'toxicity_examples_detox_germeval21_n10000.csv'
+system_prompt: | 
+  You are a helpful assistant and an expert for the categorisation and annotation of texts.\n
+  You read instructions carefully and follow them precisely. You give concise and clear answers.
+toxicities:
+  personalized_toxic_speech:
+    title: "Personalisierte Toxizität"
+    user_description: |
+      **Personalisierte toxische Sprache** umfasst Äußerungen, die Beleidigung, Bedrohung oder 
+      Belästigung einer Person beinhalten, gutheißen oder dazu aufrufen, *ohne Bezug auf die Zugehörigkeit* 
+      der Person zu einer Bevölkerungsgruppe. 
+    llm_description: |
+      **Personalisierte toxische Sprache** umfasst Äußerungen, die Beleidigung, Bedrohung oder 
+      Belästigung einer Person beinhalten, gutheißen oder dazu aufrufen, *ohne Bezug auf die Zugehörigkeit* 
+      der Person zu einer Bevölkerungsgruppe.
+    tasks:
+      prepatory_analysis:
+        general_questions: 
+          name: "Allgemeine Fragen"
+          llm_description: |
+            - Werden im Text negative Begriffe verwendet? Wen ja, welche?
+            - Richtet sich der Text gegen eine Person oder Gruppe? Wenn, ja gegen wen?
+      indicator_analysis:
+        indicator_one: 
+          name: "Merkmal 1"
+          llm_description: |
+            Einer Bevölkerungsgruppe als Ganzer oder einem Individuum als Repräsentant:in einer 
+            Bevölkerungsgruppe werden negativ besetzte Eigenschaften zugeschrieben.
+          # dummy (so far, the example fields are not used)
+          positive_examples: 
+            ex_1: "... first example ... "
+          negative_examples:
+            ex_1: " ... first negative example"
+        indicator_two: 
+          name: "Merkmal 2"
+          llm_description: |
+            Eine Bevölkerungsgruppe als Ganze oder ein Individuum als Repräsentant:in dieser Gruppe wird mit einer Krankheit, Überträgern von Krankheiten o.ä. ("Krebsgeschwür", "Parasit", "Ungeziefer") gleichgesetzt, bzw. wird mit (euphemistischen) Begriffen aus dem Wortfeld Krankheit oder Hygiene zu Gewalt aufgerufen ("Säuberung")."
+  hatespeech:
+    title: "Gruppenbezogene Toxizität (Hassrede)"
+    user_description: |
+      Gruppenbezogene toxische Sprache ist Sprache, die aufgrund von Gruppenzugehörigkeit angreift oder herabsetzt, die zu Gewalt oder Hass gegen Gruppen (oder Personen) 
+      aufruft und die auf bestimmten Merkmalen beruht wie körperlicher Erscheinung, Religion, Abstammung, nationale oder ethnische Herkunft, sexuelle Orientierung, 
+      Geschlechtsidentität oder andere. Sie kann in verschiedenen Sprachstilen vorkommen, auch in subtilen Formen oder wenn Humor verwendet wird.
+    llm_description: |
+      Gruppenbezogene toxische Sprache ist Sprache, die aufgrund von Gruppenzugehörigkeit angreift oder herabsetzt, die zu Gewalt oder Hass gegen Gruppen (oder Personen) 
+      aufruft und die auf bestimmten Merkmalen beruht wie körperlicher Erscheinung, Religion, Abstammung, nationale oder ethnische Herkunft, sexuelle Orientierung, 
+      Geschlechtsidentität oder andere. Sie kann in verschiedenen Sprachstilen vorkommen, auch in subtilen Formen oder wenn Humor verwendet wird.
+    tasks:
+      prepatory_analysis:
+        general_questions: 
+          name: "Allgemeine Fragen"
+          llm_description: |
+            - Werden im Text negative Begriffe verwendet? Wen ja, welche?
+            - Richtet sich der Text gegen eine Person oder Gruppe? Wenn, ja gegen wen?
+      indicator_analysis:
+        call_to_violence: 
+          name: "Gewaltaufruf"
+          llm_description: |
+            Wird gegenüber einer Bevölkerungsgruppe oder gegenüber einem Individuum als Repräsentant einer Gruppe zu Gewalt 
+            aufgerufen oder solche Gewalttaten gutgeheißen, auch durch Euphemismen oder implizit?
+        victim_schaming: 
+          name: "Opferverächtigung"
+          llm_description: |
+            Werden Opfer von Hasskriminalität oder das Konzept von Hassrede/Diskriminierung/Hasskriminalität gegenüber einer 
+            Bevölkerungsgruppe verächtlicht gemacht, verharmlost oder gerechtfertigt? 
+        deadnaming:
+          name: "Misgendering/Deadnaming"
+          llm_description: |
+            Enthält die Äußerung Misgendering oder Deadnaming einer Person?
+        animal_comparison:
+          name: "Herabwürdigender Tiervergleich"
+          llm_description: |
+            Wird eine Bevölkerungsgruppe als Ganze oder ein Individuum als Repräsentant:in dieser Gruppe mit nicht-menschlichen 
+            Tieren verglichen oder gleichgesetzt?
+        desease_conflation:
+          name: "Krankheitsgleichsetzung"
+          llm_description: |
+            Wird eine Bevölkerungsgruppe als Ganze oder ein Individuum als Repräsentant:in dieser Gruppe mit einer Krankheit, Überträgern 
+            von Krankheiten o.ä. (”Krebsgeschwür”, “Parasit”, “Ungeziefer”) gleichgesetzt? Wird mit (euphemistischen) Begriffen aus dem Wortfeld Krankheit zu Gewalt aufgerufen (”Säuberung”)?
+models:
+  model_1:
+    # Currently, does not work. Throws a BadRequestError: 
+    # openai.BadRequestError: Error code: 400 - {'type': 'about:blank', 'status': 400, 'title': 'Bad Request', 'detail': 'Inference error'}
+    name: "Mixtral-8x7B-Instruct-v0.1"
+    description: "NVIDEA NIM API (kostenpflichtig über DebateLab Account)"
+    base_url: "https://huggingface.co/api/integrations/dgx/v1"
+    model: "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    api_key_name: "kideku_toxicity_app_nim"
+    llm_chain: "chat-chain"
+    max_tokens: 512
+    temperature: 0.2
+  model_2:
+    name: "Llama-3.1-70B-Instruct"
+    description: "NVIDEA NIM API (kostenpflichtig über DebateLab Account)"
+    base_url: "https://huggingface.co/api/integrations/dgx/v1"
+    model: "meta-llama/Llama-3.1-70B-Instruct"
+    api_key_name: "kideku_toxicity_app_nim"
+    llm_chain: "chat-chain"
+    max_tokens: 512
+    temperature: 0.2
+  model_3:
+    name: "Meta-Llama-3-8B-Instruct"
+    description: "NVIDEA NIM API (kostenpflichtig über DebateLab Account)"
+    base_url: "https://huggingface.co/api/integrations/dgx/v1"
+    model: "meta-llama/Meta-Llama-3-8B-Instruct"
+    api_key_name: "kideku_toxicity_app_nim"
+    llm_chain: "chat-chain"
+    max_tokens: 512
+    temperature: 0.2
+  model_4:
+    name: "Mistral-7B-Instruct-v0.2"
+    description: "Zum Testen (freie Inference API, derzeit über den privaten Token von SC)"
+    base_url: "https://api-inference.huggingface.co/v1/"
+    #repo_id: "mistralai/Mistral-7B-Instruct-v0.2"
+    model: "mistralai/Mistral-7B-Instruct-v0.2"
+    llm_chain: "chat-chain"
+    api_key_name: "HF_TOKEN_KIDEKU_INFERENCE"
+    max_tokens: 1024
+    temperature: 0.2
+  model_5:
+    name: "tgi@kriton"
+    description: "TGI Server vom ITZ zum Testen. (im Moment bitte nicht nehmen)"
+    base_url: "http://kriton.philosophie.kit.edu:8080/v1/"
+    model: "tgi"
+    api_key: "no-key-required"
+    llm_chain: "chat-chain"
+    max_tokens: 1024
+    temperature: 0.2
+  model_6:
+    name: "deberta-v3-base-zeroshot-v2.0 (zero-shot categorization)"
+    description: "Zeroshot Classifier (kann man im Moment nicht nehmen)"
+    repo_id: "MoritzLaurer/deberta-v3-base-zeroshot-v2.0"
+    llm_chain: "zero-shot-chain"

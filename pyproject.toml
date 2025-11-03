@@ -1,16 +1,31 @@
 [project]
 name = "toxicity-detector"
-version = "0.1.0"
+version = "0.0.1"
 description = "An LLM-based pipeline to detect toxic speech."
 readme = "README.md"
 authors = [
     { name = "Sebastian Cacean", email = "sebastian.cacean@kit.edu" }
 ]
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "huggingface_hub",
+    "langchain",
+    "langchain_core",
+    "langchain_huggingface",
+    "langchain_openai",
+    "gradio",
+    "gradio_highlightedcode",
+    "python-dotenv",
+]
 
-[project.scripts]
-toxicity-detector = "toxicity_detector:main"
+[dependency-groups]
+# dependencies for dev env
+dev = [
+    # "arize-phoenix>=11.22.0",
+    "ipykernel",
+    "pip>=25.2",
+]
+
 
 [build-system]
 requires = ["uv_build>=0.8.19,<0.9.0"]
