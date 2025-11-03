@@ -15,4 +15,4 @@
 - [ ] Logging and data serialization
     - [ ] Use loguru as logging library throughout the codebase.
         - [ ] Perhaps a dedicated handler for logging on HF datasets?
-    - [ ] Refactor data serialization split (local vs. serialization on HF hub). (The code is not aweful).
+    - [ ] Refactor data serialization split (local vs. serialization on HF hub). (The code is aweful).
