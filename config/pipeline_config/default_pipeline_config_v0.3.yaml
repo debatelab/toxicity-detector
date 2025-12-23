@@ -1,5 +1,11 @@
 config_version: 'v0.3'
 used_chat_model: model_2
+local_serialization: True
+hf_base_path: 'datasets/DebateLabKIT/toxicity-detector-appdata'
+result_data_path: 'logs/result_data'
+local_base_path: 'C:/Users/admin/toxicity-detector'
+log_path: 'logs'
+subdirectory_construction: 'daily'
 # used data set for random example generation. currently one of:
 # - toxicity_examples_detox_germeval21_n10000.csv
 # - toxicity_examples_detox_germeval21_n5000.csv
@@ -8,7 +14,7 @@ system_prompt: |
   You are a helpful assistant and an expert for the categorisation and annotation of texts.\n
   You read instructions carefully and follow them precisely. You give concise and clear answers.
 toxicities:
-  personalized_toxic_speech:
+  personalized_toxicity:
     title: "Personalisierte Toxizität"
     user_description: |
       **Personalisierte toxische Sprache** umfasst Äußerungen, die Beleidigung, Bedrohung oder 
@@ -32,10 +38,8 @@ toxicities:
             Einer Bevölkerungsgruppe als Ganzer oder einem Individuum als Repräsentant:in einer 
             Bevölkerungsgruppe werden negativ besetzte Eigenschaften zugeschrieben.
           # dummy (so far, the example fields are not used)
-          positive_examples: 
-            ex_1: "... first example ... "
-          negative_examples:
-            ex_1: " ... first negative example"
+          positive_examples: ["... first example ... "]
+          negative_examples: [" ... first negative example"]
         indicator_two: 
           name: "Merkmal 2"
           llm_description: |
@@ -81,7 +85,7 @@ toxicities:
           name: "Krankheitsgleichsetzung"
           llm_description: |
             Wird eine Bevölkerungsgruppe als Ganze oder ein Individuum als Repräsentant:in dieser Gruppe mit einer Krankheit, Überträgern 
-            von Krankheiten o.ä. (”Krebsgeschwür”, “Parasit”, “Ungeziefer”) gleichgesetzt? Wird mit (euphemistischen) Begriffen aus dem Wortfeld Krankheit zu Gewalt aufgerufen (”Säuberung”)?
+            von Krankheiten o.ä. gleichgesetzt? Wird mit (euphemistischen) Begriffen aus dem Wortfeld Krankheit zu Gewalt aufgerufen?
 models:
   model_1:
     # Currently, does not work. Throws a BadRequestError: 

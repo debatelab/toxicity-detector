@@ -14,15 +14,29 @@ from .backend import (
     ZeroShotClassifier,
     log_message,
     get_toxicity_example_data,
-    dump_model_config_str,
+    dump_pipeline_config_str,
     config_file_exists,
-    model_config_as_string,
-    model_config,
-    model_config_file_names,
+    pipeline_config_as_string,
+    pipeline_config_file_names,
     update_feedback,
     save_result,
-    get_request_uuid,
     get_openai_chat_model,
+)
+
+from .result import (
+    ToxicityDetectorResult,
+)
+
+from .config import (
+    AppConfig,
+    PipelineConfig,
+    SubdirConstruction,
+)
+
+from .datamodels import (
+    ToxicityType,
+    Toxicity,
+    Task
 )
 
 __all__ = [
@@ -37,13 +51,19 @@ __all__ = [
     "detect_toxicity",
     "log_message",
     "get_toxicity_example_data",
-    "dump_model_config_str",
+    "dump_pipeline_config_str",
     "config_file_exists",
-    "model_config_as_string",
-    "model_config",
-    "model_config_file_names",
+    "pipeline_config_as_string",
+    "pipeline_config_file_names",
     "update_feedback",
     "save_result",
-    "get_request_uuid",
     "get_openai_chat_model",
+    # Config, output and other basic classes
+    "ToxicityType",
+    "Toxicity",
+    "Task",
+    "ToxicityDetectorResult",
+    "PipelineConfig",
+    "AppConfig",
+    "SubdirConstruction"
 ]

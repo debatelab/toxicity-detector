@@ -1,5 +1,11 @@
 config_version: 'v0.3'
 used_chat_model: model_0
+local_serialization: True
+hf_base_path: 'datasets/DebateLabKIT/toxicity-detector-appdata'
+result_data_path: 'logs/result_data'
+local_base_path: 'C:/Users/admin/toxicity-detector'
+log_path: 'logs'
+subdirectory_construction: 'daily'
 description: |
   Konfiguration mit Erläuterungen von "Stereotyp", "Ironie" und "ungerechtfertigt" und Frage nach Kontext beim Indikator "accusation"
 system_prompt: | 
@@ -11,7 +17,7 @@ system_prompt: |
 # - toxicity_examples_detox_germeval21_n5000.csv
 toxicity_examples_data_file: 'toxicity_examples_detox_germeval21_n10000.csv'
 toxicities:
-  personalized_toxic_speech:
+  personalized_toxicity:
     title: "Personalisierte Toxizität"
     user_description: |
       **Personalisierte toxische Sprache** umfasst Äußerungen, die Beleidigung, Bedrohung oder 
@@ -36,10 +42,8 @@ toxicities:
           llm_description: |
             Enthält die Äußerung sexuelle Kommentare über den Körper einer bestimmten Person, Aufforderungen zu sexuellen Handlungen, oder sonstige Inhalte, die eine bestimmte Person ohne deren Einwilligung anderweitig sexualisieren?
           # dummy (so far, the example fields are not used)
-          positive_examples: 
-            ex_1: "... first example ... "
-          negative_examples:
-            ex_1: " ... first negative example"
+          positive_examples: ["... first example ... "]
+          negative_examples: [" ... first negative example"]
         self_harm: 
           name: "Aufforderung zur Selbstgefährdung"
           llm_description: |

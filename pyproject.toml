@@ -16,6 +16,7 @@ dependencies = [
     "gradio",
     "gradio_highlightedcode",
     "python-dotenv",
+    "loguru",
 ]
 
 [dependency-groups]

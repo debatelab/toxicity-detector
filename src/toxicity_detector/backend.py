@@ -9,12 +9,20 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 from huggingface_hub import InferenceClient
 import yaml
-import uuid
 from huggingface_hub import HfFileSystem
-import datetime
+from datetime import datetime
 import pandas as pd
+from loguru import logger
 
 from toxicity_detector import MonoModelDetectToxicityChain
+from toxicity_detector.result import (
+    ToxicityDetectorResult
+)
+from toxicity_detector.config import (
+    AppConfig,
+    SubdirConstruction,
+    PipelineConfig
+)
 
 
 def detect_toxicity(
@@ -22,36 +30,42 @@ def detect_toxicity(
     user_input_source: str | None,
     toxicity_type: str,
     context_info: str | None,
-    model_config_dict: Dict,
-    app_config_dict: Dict,
+    pipeline_config: PipelineConfig,
     serialize_result: bool = True,
 ):
+    result = ToxicityDetectorResult(
+        user_input=input_text,
+        user_input_source=user_input_source,
+        toxicity_type=toxicity_type,
+        context_information=context_info,
+        pipeline_config=pipeline_config
+    )
 
     def log_msg(msg: str):
-        log_message(msg, app_config_dict)
+        log_message(msg, pipeline_config)
 
     if not input_text or input_text == "":
         raise ValueError("Input text must not be empty.")
 
     # create new uuid for the detection request
     # (used for UI logic to attach user feedback and for data serialization)
-    detection_id = get_request_uuid(app_config_dict)
-    log_msg(f"Starting new detection request (uuid: {detection_id}).")
+
+    log_msg(f"Starting new detection request (uuid: {result.request_id}).")
     context_info = (
         None if not context_info or context_info.isspace() else context_info
     )
-    model = model_config_dict["used_chat_model"]
+    model = pipeline_config.used_chat_model
 
     log_msg(f"Chosen toxicity type: {toxicity_type}")
-    log_msg(f"Used model: {model_config_dict['models'][model]['name']}")
+    log_msg(f"Used model: {pipeline_config.models[model]["name"]}")
     log_msg(f"Kontextinfo: {context_info}")
     # Chat model
-    if model_config_dict["models"][model]["llm_chain"] == "chat-chain":
+    if pipeline_config.models[model]["llm_chain"] == "chat-chain":
         # getting api key
-        if "api_key" in model_config_dict["models"][model].keys():
-            api_key = SecretStr(model_config_dict["models"][model]["api_key"])
-        elif "api_key_name" in model_config_dict["models"][model].keys():
-            api_key_name = model_config_dict["models"][model]["api_key_name"]
+        if "api_key" in pipeline_config.models[model].keys():
+            api_key = SecretStr(pipeline_config.models[model]["api_key"])
+        elif "api_key_name" in pipeline_config.models[model].keys():
+            api_key_name = pipeline_config.models[model]["api_key_name"]
             log_msg(f"Used api key name: {api_key_name}")
             # check whether the api key is set as env variable
             if os.environ.get(api_key_name) is None:
@@ -71,8 +85,8 @@ def detect_toxicity(
             )
         # model params
         model_kwargs = {}
-        if "model_kwargs" in model_config_dict["models"][model].keys():
-            model_kwargs = model_config_dict["models"][model]["model_kwargs"]
+        if "model_kwargs" in pipeline_config.models[model].keys():
+            model_kwargs = pipeline_config.models[model]["model_kwargs"]
 
         log_msg(
             f"Model kwargs: {model_kwargs}"
@@ -82,26 +96,26 @@ def detect_toxicity(
             llms_dict={
                 "chat_model": get_openai_chat_model(
                     api_key=api_key,
-                    model=model_config_dict["models"][model]["model"],
-                    base_url=model_config_dict["models"][model]["base_url"],
+                    model=pipeline_config.models[model]["model"],
+                    base_url=pipeline_config.models[model]["base_url"],
                 )
             },
-            indicators_dict=model_config_dict["toxicities"][toxicity_type][
-                "tasks"
-            ]["indicator_analysis"],
+            indicators_dict={key: pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"][key].model_dump()
+                             for key in pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"].keys()
+                             },
             **model_kwargs
         )
     else:
         # TODO: log warning
         raise ValueError(
             f"llm_chain "
-            f"{model_config_dict['models'][model]['llm_chain']} not "
+            f"{pipeline_config.models[model]['llm_chain']} not "
             f"implemented."
         )
     # TODO: Offering possibility to use zero shot classifiers
     # (for, e.g., indicator analysis)
     # using zero-shot classifier
-    # elif model_config_dict['models'][model]['llm_chain'] == \
+    # elif pipeline_config.models[model]['llm_chain'] == \
     #         "zero-shot-chain":
     #     # Identifier of the model (as used in the config)
     #     # that is being used to provide an explanation for the
@@ -115,7 +129,7 @@ def detect_toxicity(
     #     toxicity_detection_chain = \
     #         chains.IdentifyToxicContentZeroShotChain.build({
     #         'zero_shot_model': backend.ZeroShotClassifier(
-    #             model=model_config_dict['models'][model]['repo_id'],
+    #             model=pipeline_config.models[model]['repo_id'],
     #             labels=list(model_config_dict['toxicities'][
     #                 toxicity_type]['zero-shot-categorization'][
     #                 'labels'].values()),
@@ -125,42 +139,38 @@ def detect_toxicity(
     #         ),
     #         'chat_model': backend.get_chat_model(
     #             token=os.environ.get("HF_TOKEN_KIDEKU_INFERENCE"),
-    #             repo_id=model_config_dict['models'][explaining_model_name]['repo_id']
+    #             repo_id=pipeline_config.models[explaining_model_name]['repo_id']
     #         )
     #     })
 
+    indicators_dict = {key: pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"][key].model_dump()
+                       for key in pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"].keys()}
+
     answer = toxicitiy_detection_chain.invoke(
         {
-            "system_prompt": model_config_dict["system_prompt"],
-            "toxicity_explication": model_config_dict["toxicities"][
-                toxicity_type
-            ]["llm_description"],
+            "system_prompt": pipeline_config.system_prompt,
+            "toxicity_explication": pipeline_config.toxicities[toxicity_type].llm_description,
             "user_input": input_text,
             "user_input_source": user_input_source,
-            "general_questions": model_config_dict["toxicities"][
-                toxicity_type
-            ]["tasks"]["prepatory_analysis"]["general_questions"],
+            "general_questions": pipeline_config.toxicities[toxicity_type].tasks["prepatory_analysis"]["general_questions"].model_dump(),
             "context_information": context_info,
-            "indicators_dict": model_config_dict["toxicities"][toxicity_type][
-                "tasks"
-            ]["indicator_analysis"],
+            "indicators_dict": indicators_dict,
         }
     )
 
-    answer["toxicity_type"] = toxicity_type
-    answer["date"] = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-    answer["uid"] = detection_id
-    result_dict = {"config": model_config_dict, "query": answer}
+    result.answer = answer
+    # adding prompts for logging
+    prompts = MonoModelDetectToxicityChain.prompts(**result.answer)
+    result.answer["prompts"] = prompts
     # saving the result
     # TODO: as async
     if serialize_result:
         save_result(
-            result_dict=result_dict,
-            file_name=f"{detection_id}.yaml",
-            app_config_dict=app_config_dict,
+            result=result,
+            pipeline_config=pipeline_config,
         )
 
-    return result_dict
+    return result
 
 
 class ZeroShotClassifier(LLM):
@@ -250,82 +260,27 @@ class ZeroShotClassifier(LLM):
         return f"Zero Shot Classifier ({self.model})"
 
 
-def log_message(message: str, app_config_dict: Dict):
-    local_serialization = app_config_dict["data_serialization"][
-        "local_serialization"
-    ]
-    log_dir_path = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["log_path"],
-    )
-
-    now = datetime.datetime.now()
+def log_message(message: str, pipeline_config: PipelineConfig):
+    now = datetime.now()
     log_file_name = now.strftime("toxicity_detector_log_%Y_%m_%d.log")
-    log_file_path = os.path.join(log_dir_path, log_file_name)
 
-    if local_serialization:
+    if pipeline_config.local_serialization:
         log_dir_path = os.path.join(
-            app_config_dict["data_serialization"]["local_base_path"],
-            app_config_dict["data_serialization"]["log_path"],
+            pipeline_config.get_base_path(),
+            pipeline_config.log_path,
         )
         os.makedirs(log_dir_path, exist_ok=True)
-        with open(log_file_path, "a") as log_file:
+        with open(os.path.join(log_dir_path, log_file_name), "a", encoding="utf-8") as log_file:
             log_file.write(message + "\n")
-    print(message)
+    logger.info(message)
 
 
-def _current_subdir(app_config_dict: Dict) -> str:
-    """Generate subdir path based on date and construction method.
-
-    Generates a subdirectory path based on the current date
-    and the specified subdirectory construction method.
-
-    Args:
-        app_config_dict (Dict): A dictionary containing application
-            configuration. It must have a key 'data_serialization'
-            which itself contains a key 'subdirectory_construction'.
-            The value of 'subdirectory_construction' should be one of
-            None, "monthly", "weekly", "daily", or "yearly".
-
-    Returns:
-        str: A string representing the subdirectory path based on
-            the current date and the specified subdirectory
-            construction method. If 'subdirectory_construction' is
-            None, an empty string is returned.
-
-    Raises:
-        ValueError: If 'subdirectory_construction' is not one of
-            None, "monthly", "weekly", "daily", or "yearly".
-    """
-    subdirectory_construction = app_config_dict["data_serialization"][
-        "subdirectory_construction"
-    ]
-
-    if subdirectory_construction not in [
-        None, "monthly", "weekly", "yearly", "daily"
-    ]:
-        raise ValueError(
-            "subdirectory must be one of None, 'monthly', "
-            "'weekly', 'daily', or 'yearly'."
-        )
-
-    now = datetime.datetime.now()
-    if subdirectory_construction == "monthly":
-        subdirectory_path = now.strftime("y%Y_m%m")
-    elif subdirectory_construction == "weekly":
-        year, week, _ = now.isocalendar()
-        subdirectory_path = f"y{year}_w{week}"
-    elif subdirectory_construction == "yearly":
-        subdirectory_path = now.strftime("y%Y")
-    elif subdirectory_construction == "daily":
-        subdirectory_path = now.strftime("%Y_%m_%d")
-    else:
-        subdirectory_path = ""
-    return subdirectory_path
+def _current_subdir(subdirectory_construction: str | None) -> str:
+    if subdirectory_construction is None or subdirectory_construction not in SubdirConstruction.value2formatcode().keys():
+        return ""
+    now = datetime.now()
+    dateformat = SubdirConstruction.value2formatcode()[subdirectory_construction]
+    return now.strftime(dateformat)
 
 
 def _yaml_dump(
@@ -334,6 +289,7 @@ def _yaml_dump(
     dict: Dict,
     local_serialization: bool,
     make_dirs: bool = False,
+    key_name: str | None = None
 ):
     file_path = os.path.join(dir_path, file_name)
     if local_serialization:
@@ -345,163 +301,160 @@ def _yaml_dump(
                 default_flow_style=False, encoding="utf-8"
             )
     else:
-        fs = HfFileSystem()
+        file_path = os.path.join(
+            "hf://datasets",
+            dir_path,
+            file_name
+        ).replace("\\", "/")
+        if key_name:
+            fs = HfFileSystem(token=os.environ[key_name])
+        else:
+            fs = HfFileSystem()
         if make_dirs:
             fs.makedirs(dir_path, exist_ok=True)
-        with fs.open(file_path, "w", encoding="UTF8") as f:
+        with fs._open(file_path, "w", encoding="utf-8") as f:
             yaml.dump(
                 dict, f, allow_unicode=True,
                 default_flow_style=False, encoding="utf-8"
             )
 
 
-def _yaml_load(file_path: str, local_serialization: bool) -> Dict:
+def _yaml_load(file_path: str, local_serialization: bool, key_name: str | None = None) -> Dict:
     if local_serialization:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             ret_dict = yaml.safe_load(f)
     else:
-        fs = HfFileSystem()
-        with fs.open(file_path, "r") as f:
+        file_path = os.path.join("hf://datasets", file_path).replace("\\", "/")
+        if key_name:
+            fs = HfFileSystem(token=os.environ[key_name])
+        else:
+            fs = HfFileSystem()
+        with fs._open(file_path, "rb", encoding="utf-8") as f:
             ret_dict = yaml.safe_load(f)
     return ret_dict
 
 
-def _str_load(file_path: str, local_serialization: bool) -> str:
+def _str_load(file_path: str, local_serialization: bool, key_name: str | None = None) -> str:
+    logger.info(f"Getting file {file_path}")
     if local_serialization:
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             # Read the contents of the file into a variable
             f_str = f.read()
     else:
-        fs = HfFileSystem()
-        with fs.open(file_path, "rt") as f:
+        file_path = os.path.join("hf://datasets", file_path).replace("\\", "/")
+        if key_name:
+            fs = HfFileSystem(token=os.environ[key_name])
+        else:
+            fs = HfFileSystem()
+        with fs._open(file_path, "rb", encoding="utf-8") as f:
             # Read the contents of the file into a variable
             f_str = f.read()
+    logger.info(f"Got file {file_path}")
     return f_str
 
 
 def get_toxicity_example_data(
-    app_config_dict: Dict, data_file: str = None
-) -> List[str]:
+    app_config: AppConfig, data_file: str = None
+) -> pd.DataFrame:
     if not data_file:
-        data_file = app_config_dict["data_serialization"][
-            "toxicity_examples_data_file"
-        ]
-    example_data_file_path = os.path.join(
-        app_config_dict["data_serialization"]["hf_base_path"],
-        app_config_dict["data_serialization"]["toxicity_examples_data_path"],
-        data_file,
+        data_file = app_config.toxicity_examples_data_file
+    example_data_file_path = "/".join([
+        "hf://datasets",
+        app_config.toxicity_examples_hf_base_path,
+        app_config.toxicity_examples_data_file]
     )
 
-    fs = HfFileSystem()
-    with fs.open(example_data_file_path, "r") as f:
+    if app_config.toxicity_examples_key_name:
+        fs = HfFileSystem(token=os.environ[app_config.toxicity_examples_key_name])
+    else:
+        fs = HfFileSystem()
+    with fs._open(example_data_file_path, "rb") as f:
         example_data_df = pd.read_csv(f)
-    return example_data_df
+    logger.info("Loading examples done.")
+    return pd.DataFrame(example_data_df[['text', 'source']])
     # return example_data_df['text'].tolist()
 
 
-def _str_dump(file_path: str, file_str: str, local_serialization: bool):
+def _str_dump(file_path: str, file_str: str, local_serialization: bool, key_name: str | None = None):
     if local_serialization:
-        with open(file_path, "w") as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(file_str)
     else:
-        fs = HfFileSystem()
-        with fs.open(file_path, "w") as f:
+        file_path = os.path.join("hf://datasets", file_path).replace("\\", "/")
+        if key_name:
+            fs = HfFileSystem(token=os.environ[key_name])
+        else:
+            fs = HfFileSystem()
+        with fs._open(file_path, "w", encoding="utf-8") as f:
             f.write(file_str)
 
 
-def dump_model_config_str(
-    file_name: str, model_config_file_str: str, app_config_dict: Dict
+def dump_pipeline_config_str(
+    file_name: str, pipeline_config_file_str: str, app_config: AppConfig
 ):
-    data_ser = app_config_dict["data_serialization"]
-    local_serialization = data_ser["local_serialization"]
     file_path = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["model_config_path"],
+        app_config.get_pipeline_config_path(),
         file_name,
     )
-    _str_dump(file_path, model_config_file_str, local_serialization)
+    _str_dump(file_path, pipeline_config_file_str, app_config.local_pipeline_config)
 
 
-def config_file_exists(app_config_dict: Dict, config_file_name: str) -> bool:
-    data_ser = app_config_dict["data_serialization"]
-    local_serialization = data_ser["local_serialization"]
-    config_dir_path = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["model_config_path"],
-    )
-    config_file_path = os.path.join(config_dir_path, config_file_name)
-
+def config_file_exists(app_config: AppConfig, config_file_name: str) -> bool:
+    local_serialization = app_config.local_pipeline_config
     if local_serialization:
+        config_file_path = os.path.join(
+            app_config.get_pipeline_config_path(),
+            config_file_name
+        )
         return os.path.isfile(config_file_path)
     else:
-        fs = HfFileSystem()
+        config_file_path = "/".join([
+            "hf://datasets",
+            app_config.get_pipeline_config_path(),
+            config_file_name]
+        )
+        if app_config.pipeline_config_key_name:
+            fs = HfFileSystem(token=os.environ[app_config.pipeline_config_key_name])
+        else:
+            fs = HfFileSystem()
         return fs.exists(config_file_path)
 
 
-def model_config_as_string(
-    app_config_dict: Dict, model_config_file_name: str | None = None
+def pipeline_config_as_string(
+    app_config: AppConfig, pipeline_config_file_name: str | None = None
 ) -> str:
-    data_ser = app_config_dict["data_serialization"]
-    local_serialization = data_ser["local_serialization"]
-    if not model_config_file_name:
-        model_config_file_name = app_config_dict["default_model_config_file"]
-    config_dir_path = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["model_config_path"],
-    )
+    if not pipeline_config_file_name:
+        pipeline_config_file_name = app_config.default_pipeline_config_file
     return _str_load(
-        os.path.join(config_dir_path, model_config_file_name),
-        local_serialization
+        os.path.join(app_config.get_pipeline_config_path(), pipeline_config_file_name),
+        app_config.local_pipeline_config,
+        app_config.pipeline_config_key_name
     )
 
 
-def model_config(
-    app_config_dict: Dict,
-    model_config_file_name: str | None = None,
-) -> Dict:
-    return yaml.safe_load(
-        model_config_as_string(app_config_dict, model_config_file_name)
-    )
-
-
-def model_config_file_names(app_config_dict: Dict, config_version: str | None = None):
-    data_ser = app_config_dict["data_serialization"]
-    local_serialization = data_ser["local_serialization"]
+def pipeline_config_file_names(app_config: AppConfig, config_version: str | None = None):
+    local_serialization = app_config.local_pipeline_config
     if not config_version:
-        config_version = app_config_dict["model_config_version"]
+        config_version = app_config.pipeline_config_version
     config_file_names = []
-    config_dir_path = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["model_config_path"],
-    )
+
+    config_dir_path = app_config.get_pipeline_config_path()
     if local_serialization:
         for config_file_path in glob(f"{config_dir_path}/*.yaml"):
-            with open(config_file_path, "rt") as file:
+            with open(config_file_path, "rt", encoding="utf-8") as file:
                 file_dict = yaml.safe_load(file)
                 if file_dict.get("config_version") == config_version:
                     config_file_names.append(
                         os.path.basename(config_file_path)
                     )
     else:
-        fs = HfFileSystem()
+        if app_config.pipeline_config_key_name:
+            fs = HfFileSystem(token=os.environ[app_config.pipeline_config_key_name])
+        else:
+            fs = HfFileSystem()
+        config_dir_path = f"hf://datasets/{config_dir_path}".replace("\\", "/")
         for config_file_path in fs.glob(f"{config_dir_path}/*.yaml"):
-            with fs.open(config_file_path, "rt") as file:
+            with fs._open(config_file_path, "rb", encoding="utf-8") as file:
                 file_dict = yaml.safe_load(file)
                 if file_dict.get("config_version") == config_version:
                     config_file_names.append(
@@ -512,105 +465,40 @@ def model_config_file_names(app_config_dict: Dict, config_version: str | None = 
 
 
 def update_feedback(
-    app_config_dict: Dict,
-    detection_id: str,
+    pipeline_config: PipelineConfig,
+    result: ToxicityDetectorResult,
     feedback_text: str | None = None,
     feedback_correctness: str | None = None,
     feedback_likert_content: Dict | None = None,
 ):
-    # TODO: better find file by detection_id
-    subdirectory_path = _current_subdir(app_config_dict)
-    data_ser = app_config_dict["data_serialization"]
-    local_serialization = data_ser["local_serialization"]
-    dir_path = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["result_data_path"],
-        subdirectory_path,
-    )
 
-    file_name = f"{detection_id}.yaml"
-    result_file_path = os.path.join(dir_path, f"{detection_id}.yaml")
-    result_dict = _yaml_load(result_file_path, local_serialization)
-
-    if "feedback" not in result_dict.keys():
-        result_dict["feedback"] = {}
-
-    result_dict["feedback"]["feedback_text"] = feedback_text
-    result_dict["feedback"]["correctness"] = feedback_correctness
+    result.feedback["feedback_text"] = feedback_text
+    result.feedback["correctness"] = feedback_correctness
     if feedback_likert_content:
         for key, value in feedback_likert_content.items():
-            result_dict["feedback"][key] = value
+            result.feedback[key] = value
+    
+    save_result(result, pipeline_config)
 
-    _yaml_dump(dir_path, file_name, result_dict, local_serialization)
 
-
-def save_result(result_dict: Dict, file_name: str, app_config_dict: Dict):
-    # adding prompts for logging
-    prompts = MonoModelDetectToxicityChain.prompts(
-        **result_dict["query"]
-    )
-    result_dict["query"]["prompts"] = prompts
-
-    subdirectory_path = _current_subdir(app_config_dict)
-    data_ser = app_config_dict["data_serialization"]
-    local_serialization = data_ser["local_serialization"]
-
+def save_result(result: ToxicityDetectorResult, pipeline_config: PipelineConfig):
+    subdirectory_path = _current_subdir(pipeline_config.subdirectory_construction)
+    local_serialization = pipeline_config.local_serialization
+    file_name = f"{result.request_id}.yaml"
     dir_path = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["result_data_path"],
+        pipeline_config.get_base_path(),
         subdirectory_path,
     )
     _yaml_dump(
-        dir_path, file_name, result_dict, local_serialization,
-        make_dirs=True
+        dir_path, file_name, result.model_dump(), local_serialization,
+        make_dirs=True,
+        key_name=pipeline_config.hf_key_name
     )
 
 # def get_chat_model(token: str, repo_id: str):
 #     llm = HuggingFaceEndpoint(repo_id=repo_id, huggingfacehub_api_token=token)
 #     # chat_model = ChatHuggingFace(llm=llm)
 #     return llm
-
-def get_request_uuid(app_config_dict: Dict) -> str:
-    # Finding existing uuids.
-    data_ser = app_config_dict["data_serialization"]
-    local_serialization = data_ser["local_serialization"]
-    data_dir = os.path.join(
-        (
-            app_config_dict["data_serialization"]["local_base_path"]
-            if local_serialization
-            else app_config_dict["data_serialization"]["hf_base_path"]
-        ),
-        app_config_dict["data_serialization"]["result_data_path"],
-    )
-    # On local file system
-    if app_config_dict["data_serialization"]["local_serialization"]:
-        uiids = [
-            os.path.splitext(os.path.basename(file))[0]
-            for file in glob(f"{data_dir}/**/*.yaml", recursive=True)
-        ]
-    # On HF
-    else:
-        fs = HfFileSystem()
-        if not fs.exists(data_dir):
-            return str(uuid.uuid4())
-        uiids = [
-            os.path.splitext(os.path.basename(file))[0]
-            for file in fs.glob(f"{data_dir}/**/*.yaml")
-        ]
-    # print(f"Existing uuids: {uiids}")
-    # TODO: Uniqueness is already guaranteed by the function itself
-    unique_id = str(uuid.uuid4())
-    while unique_id in uiids:
-        unique_id = str(uuid.uuid4())
-    return unique_id
 
 
 def get_openai_chat_model(
