@@ -34,22 +34,19 @@ def detect_toxicity(
         pipeline_config=pipeline_config,
     )
 
-    def log_msg(msg: str):
-        log_message(msg, pipeline_config)
-
     if not input_text or input_text == "":
         raise ValueError("Input text must not be empty.")
 
     # create new uuid for the detection request
     # (used for UI logic to attach user feedback and for data serialization)
 
-    log_msg(f"Starting new detection request (uuid: {result.request_id}).")
+    logger.info(f"Starting new detection request (uuid: {result.request_id}).")
     context_info = None if not context_info or context_info.isspace() else context_info
     model = pipeline_config.used_chat_model
 
-    log_msg(f"Chosen toxicity type: {toxicity_type}")
-    log_msg(f"Used model: {pipeline_config.models[model]["name"]}")
-    log_msg(f"Kontextinfo: {context_info}")
+    logger.info(f"Chosen toxicity type: {toxicity_type}")
+    logger.info(f"Used model: {pipeline_config.models[model]['name']}")
+    logger.info(f"Kontextinfo: {context_info}")
     # Chat model
     if pipeline_config.models[model]["llm_chain"] == "chat-chain":
         # getting api key
@@ -57,7 +54,7 @@ def detect_toxicity(
             api_key = SecretStr(pipeline_config.models[model]["api_key"])
         elif "api_key_name" in pipeline_config.models[model].keys():
             api_key_name = pipeline_config.models[model]["api_key_name"]
-            log_msg(f"Used api key name: {api_key_name}")
+            logger.info(f"Used api key name: {api_key_name}")
             # check whether the api key is set as env variable
             if os.environ.get(api_key_name) is None:
                 raise ValueError(
@@ -78,7 +75,7 @@ def detect_toxicity(
         if "model_kwargs" in pipeline_config.models[model].keys():
             model_kwargs = pipeline_config.models[model]["model_kwargs"]
 
-        log_msg(f"Model kwargs: {model_kwargs}")
+        logger.info(f"Model kwargs: {model_kwargs}")
         # building chain
         toxicitiy_detection_chain = MonoModelDetectToxicityChain.build(
             llms_dict={
@@ -99,12 +96,13 @@ def detect_toxicity(
             **model_kwargs,
         )
     else:
-        # TODO: log warning
-        raise ValueError(
+        err_msg = (
             f"llm_chain "
             f"{pipeline_config.models[model]['llm_chain']} not "
             f"implemented."
         )
+        logger.error(err_msg)
+        raise ValueError(err_msg)
     # TODO: Offering possibility to use zero shot classifiers
     # (for, e.g., indicator analysis)
     # using zero-shot classifier
@@ -257,23 +255,6 @@ class ZeroShotClassifier(LLM):
         """Get the type of language model used by this chat model.
         Used for logging purposes only."""
         return f"Zero Shot Classifier ({self.model})"
-
-
-def log_message(message: str, pipeline_config: PipelineConfig):
-    now = datetime.now()
-    log_file_name = now.strftime("toxicity_detector_log_%Y_%m_%d.log")
-
-    if pipeline_config.local_serialization:
-        log_dir_path = os.path.join(
-            pipeline_config.get_base_path(),
-            pipeline_config.log_path,
-        )
-        os.makedirs(log_dir_path, exist_ok=True)
-        with open(
-            os.path.join(log_dir_path, log_file_name), "a", encoding="utf-8"
-        ) as log_file:
-            log_file.write(message + "\n")
-    logger.info(message)
 
 
 def _current_subdir(subdirectory_construction: str | None) -> str:

@@ -12,7 +12,6 @@ from .chains import (
 from .backend import (
     detect_toxicity,
     ZeroShotClassifier,
-    log_message,
     get_toxicity_example_data,
     dump_pipeline_config_str,
     config_file_exists,
@@ -49,7 +48,6 @@ __all__ = [
     "ZeroShotClassifier",
     # Backend functions
     "detect_toxicity",
-    "log_message",
     "get_toxicity_example_data",
     "dump_pipeline_config_str",
     "config_file_exists",

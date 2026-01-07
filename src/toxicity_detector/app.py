@@ -5,11 +5,11 @@ import pandas as pd
 from typing import Dict, List, Tuple
 from gradio_highlightedcode import HighlightedCode
 from random import randrange
+from loguru import logger
 
 # Import from toxicity_detector package
 from toxicity_detector import (
     detect_toxicity,
-    log_message,
     get_toxicity_example_data,
     dump_pipeline_config_str,
     config_file_exists,
@@ -31,16 +31,11 @@ _APP_CONFIG_FILE = os.getenv(
 app_config = AppConfig.from_file(_APP_CONFIG_FILE)
 
 config_file_names = pipeline_config_file_names(app_config)
-log_message(
-    f"Valid configs: {config_file_names}", app_config.get_default_pipeline_config()
-)
+logger.info(f"Valid configs: {config_file_names}")
 
 # variable is set on HF via the space
 if "RUNS_ON_SPACES" not in os.environ.keys():
-    log_message(
-        "Gradioapp runs locally. Loading env variables...",
-        app_config.get_default_pipeline_config(),
-    )
+    logger.info("Gradioapp runs locally. Loading env variables...")
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -58,6 +53,7 @@ def _tasks(pipeline_config: PipelineConfig, toxicity_type) -> List[str]:
     return task_names
 
 
+# TODO: remove loading via pipeline config
 def _load_toxicity_example_data(
     app_config: AppConfig, pipeline_config: PipelineConfig
 ) -> pd.DataFrame:
@@ -67,7 +63,7 @@ def _load_toxicity_example_data(
             "Loading toxicity examples as specified in pipeline config "
             f"({pipeline_config.toxicity_examples_data_file})"
         )
-        log_message(msg, pipeline_config)
+        logger.info(msg)
         examples_data_file = pipeline_config.toxicity_examples_data_file
     else:
         examples_data_file = app_config.toxicity_examples_data_file
@@ -75,7 +71,7 @@ def _load_toxicity_example_data(
             "Loading toxicity examples as specified in app config "
             f"({examples_data_file})"
         )
-        log_message(msg, pipeline_config)
+        logger.info(msg)
 
     return get_toxicity_example_data(app_config, examples_data_file)
 

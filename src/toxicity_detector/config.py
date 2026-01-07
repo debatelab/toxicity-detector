@@ -5,6 +5,7 @@ import yaml
 from huggingface_hub import HfFileSystem
 import os
 from loguru import logger
+from datetime import datetime
 
 from toxicity_detector.datamodels import Toxicity, ToxicityType
 
@@ -47,9 +48,41 @@ class PipelineConfig(BaseModel):
         "You read instructions carefully and follow them precisely.\n"
         "You give concise and clear answers."
     )
-    toxicity_examples_data_file: str | None = None  #TODE: remove
+    toxicity_examples_data_file: str | None = None  # TODE: remove
     models: Dict[str, Dict[str, Any]] = Field(default_factory=lambda: dict())
     env_file: str | None = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._configure_logging()
+
+    def _configure_logging(self):
+        """Configure loguru file handler for logging."""
+        if self.local_serialization:
+            log_dir_path = os.path.join(
+                self.get_base_path(),
+                self.log_path,
+            )
+            os.makedirs(log_dir_path, exist_ok=True)
+
+            # Create log file name with current date
+            now = datetime.now()
+            log_file_name = now.strftime("toxicity_detector_log_%Y_%m_%d.log")
+            log_file_path = os.path.join(log_dir_path, log_file_name)
+
+            # Add file handler to loguru
+            # Use rotation="1 day" to create a new file each day
+            logger.add(
+                log_file_path,
+                rotation="1 day",
+                retention="30 days",
+                format=(
+                    "{time:YYYY-MM-DD HH:mm:ss} | {level} | "
+                    "{name}:{function}:{line} - {message}"
+                ),
+                level="INFO",
+            )
+            logger.info(f"Configured logging to file: {log_file_path}")
 
     @model_validator(mode="after")
     def load_env_file(self) -> Self:
@@ -110,17 +143,17 @@ class PipelineConfig(BaseModel):
                 f"config_version must be specified. "
                 f"Minimum required version is {MIN_PIPELINE_CONFIG_VERSION}"
             )
-        
+
         # Extract version numbers from format "vX.Y" or "vX.Y.Z"
         def parse_version(version_str: str) -> tuple:
             # Remove 'v' prefix and split by '.'
-            version_parts = version_str.lstrip('v').split('.')
+            version_parts = version_str.lstrip("v").split(".")
             return tuple(int(part) for part in version_parts)
-        
+
         try:
             current_version = parse_version(v)
             min_version = parse_version(MIN_PIPELINE_CONFIG_VERSION)
-            
+
             if current_version < min_version:
                 raise ValueError(
                     f"config_version {v} is below minimum required version "
@@ -133,7 +166,7 @@ class PipelineConfig(BaseModel):
                     f"Expected format like 'v0.3' or 'v0.4.1'"
                 )
             raise
-        
+
         return v
 
     @field_validator("subdirectory_construction")
