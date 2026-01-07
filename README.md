@@ -109,7 +109,7 @@ toxicity-detector/
 
 ### Code Style
 
-The project follows PEP 8 guidelines with a maximum line length of 79 characters.
+The project follows PEP 8 guidelines with a maximum line length of 88 characters.
 
 Run linting checks:
 ```bash
@@ -118,8 +118,36 @@ uv run flake8 src/
 
 ### Running Tests
 
+Run all tests:
 ```bash
 uv run pytest
+```
+
+Run tests with verbose output:
+```bash
+uv run pytest -v
+```
+
+Run a specific test file:
+```bash
+uv run pytest tests/test_config.py
+```
+
+Run tests with coverage report:
+```bash
+uv run pytest --cov=src/toxicity_detector
+```
+
+Alternative: Using the activated virtual environment:
+```bash
+# Activate the virtual environment first
+source .venv/bin/activate  # On Linux/Mac
+# or
+.venv\Scripts\activate  # On Windows
+
+# Then run pytest directly
+pytest tests/
+pytest tests/test_config.py -v
 ```
 
 ### Working with Notebooks

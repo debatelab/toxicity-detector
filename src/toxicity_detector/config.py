@@ -8,6 +8,9 @@ from loguru import logger
 
 from toxicity_detector.datamodels import Toxicity, ToxicityType
 
+# Minimum required pipeline config version
+MIN_PIPELINE_CONFIG_VERSION = "v0.3"
+
 
 class SubdirConstruction(enum.Enum):
     DAILY = "daily"
@@ -35,7 +38,7 @@ class PipelineConfig(BaseModel):
     # one of monthly, weekly, yearly, daily, None
     subdirectory_construction: Optional[str] = None
     toxicities: Dict[str, Toxicity] = {}
-    config_version: str | None = None
+    config_version: str = "v0.4"
     used_chat_model: str
     description: str | None = None
     system_prompt: str = (
@@ -44,7 +47,7 @@ class PipelineConfig(BaseModel):
         "You read instructions carefully and follow them precisely.\n"
         "You give concise and clear answers."
     )
-    toxicity_examples_data_file: str | None = None
+    toxicity_examples_data_file: str | None = None  #TODE: remove
     models: Dict[str, Dict[str, Any]] = Field(default_factory=lambda: dict())
     env_file: str | None = None
 
@@ -73,7 +76,7 @@ class PipelineConfig(BaseModel):
                 from dotenv import load_dotenv
 
                 load_dotenv(self.env_file)
-            logger.info(f"Loaded environment variables from '{self.env_file}'")
+                logger.info(f"Loaded environment variables from '{self.env_file}'")
         return self
 
     @model_validator(mode="after")
@@ -97,6 +100,40 @@ class PipelineConfig(BaseModel):
                 f"Allowed toxicities are {set(allowed_values)}, "
                 f"got {set(toxicity_types)}"
             )
+        return v
+
+    @field_validator("config_version")
+    @classmethod
+    def validate_config_version(cls, v):
+        if v is None:
+            raise ValueError(
+                f"config_version must be specified. "
+                f"Minimum required version is {MIN_PIPELINE_CONFIG_VERSION}"
+            )
+        
+        # Extract version numbers from format "vX.Y" or "vX.Y.Z"
+        def parse_version(version_str: str) -> tuple:
+            # Remove 'v' prefix and split by '.'
+            version_parts = version_str.lstrip('v').split('.')
+            return tuple(int(part) for part in version_parts)
+        
+        try:
+            current_version = parse_version(v)
+            min_version = parse_version(MIN_PIPELINE_CONFIG_VERSION)
+            
+            if current_version < min_version:
+                raise ValueError(
+                    f"config_version {v} is below minimum required version "
+                    f"{MIN_PIPELINE_CONFIG_VERSION}"
+                )
+        except (ValueError, AttributeError) as e:
+            if "invalid literal" in str(e):
+                raise ValueError(
+                    f"Invalid config_version format: {v}. "
+                    f"Expected format like 'v0.3' or 'v0.4.1'"
+                )
+            raise
+        
         return v
 
     @field_validator("subdirectory_construction")
@@ -143,6 +180,7 @@ class PipelineConfig(BaseModel):
             return PipelineConfig(**yaml.safe_load(f.read()))
 
 
+# TODO: remove defaults
 class UITexts(BaseModel):
     trigger_warning: dict[str, str] = {
         "message": (

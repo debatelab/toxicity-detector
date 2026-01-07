@@ -25,6 +25,7 @@ dev = [
     # "arize-phoenix>=11.22.0",
     "ipykernel",
     "pip>=25.2",
+    "pytest>=8.0.0",
 ]
 
 
