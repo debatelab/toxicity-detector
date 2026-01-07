@@ -48,7 +48,6 @@ class PipelineConfig(BaseModel):
         "You read instructions carefully and follow them precisely.\n"
         "You give concise and clear answers."
     )
-    toxicity_examples_data_file: str | None = None  # TODE: remove
     models: Dict[str, Dict[str, Any]] = Field(default_factory=lambda: dict())
     env_file: str | None = None
 

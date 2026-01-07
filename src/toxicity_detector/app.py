@@ -53,25 +53,21 @@ def _tasks(pipeline_config: PipelineConfig, toxicity_type) -> List[str]:
     return task_names
 
 
-# TODO: remove loading via pipeline config
 def _load_toxicity_example_data(
-    app_config: AppConfig, pipeline_config: PipelineConfig
+    app_config: AppConfig
 ) -> pd.DataFrame:
     examples_data_file = None
-    if pipeline_config.toxicity_examples_data_file is not None:
-        msg = (
-            "Loading toxicity examples as specified in pipeline config "
-            f"({pipeline_config.toxicity_examples_data_file})"
-        )
-        logger.info(msg)
-        examples_data_file = pipeline_config.toxicity_examples_data_file
-    else:
+    if app_config.toxicity_examples_data_file is not None:
         examples_data_file = app_config.toxicity_examples_data_file
         msg = (
             "Loading toxicity examples as specified in app config "
             f"({examples_data_file})"
         )
         logger.info(msg)
+    else:
+        logger.warning(
+            "No toxicity example data file specified in app config! "
+        )
 
     return get_toxicity_example_data(app_config, examples_data_file)
 
@@ -95,7 +91,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
     feedback_likert_content_st = gr.State(dict())
     # state variable to store the example data for the toxicity detection
     toxicity_example_data_st = gr.State(
-        _load_toxicity_example_data(app_config, pipeline_config_state.value)
+        _load_toxicity_example_data(app_config)
     )
 
     # state variable to store source string for the user input
@@ -411,7 +407,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
             pipeline_config_state.change(
                 lambda toxicity_type, pipeline_config: (
                     pipeline_config.toxicities[toxicity_type].user_description,
-                    _load_toxicity_example_data(app_config, pipeline_config),
+                    _load_toxicity_example_data(app_config),
                     ToxicityDetectorResult(),
                     True,  # set output ui elements to dirty
                 ),
