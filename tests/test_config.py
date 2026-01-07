@@ -160,7 +160,7 @@ class TestDefaultConfigLoader:
         toxicities = _get_default_toxicities()
         assert isinstance(toxicities, dict)
         assert len(toxicities) > 0
-        
+
         # All values should be Toxicity instances, not dicts
         for key, value in toxicities.items():
             assert isinstance(
@@ -175,13 +175,13 @@ class TestDefaultConfigLoader:
     def test_get_default_toxicities_structure_is_correct(self):
         """Toxicities should have correct nested structure with Task instances"""
         toxicities = _get_default_toxicities()
-        
+
         # Check personalized_toxicity structure
         assert "personalized_toxicity" in toxicities
         pers_tox = toxicities["personalized_toxicity"]
         assert pers_tox.title == "Personalisierte Toxizität"
         assert len(pers_tox.tasks) > 0
-        
+
         # Check that tasks contain Task instances
         for task_category, tasks_dict in pers_tox.tasks.items():
             assert isinstance(tasks_dict, dict)
@@ -196,7 +196,7 @@ class TestDefaultConfigLoader:
         """_get_default_toxicities should return new Toxicity instances each call"""
         toxicities1 = _get_default_toxicities()
         toxicities2 = _get_default_toxicities()
-        
+
         # Dicts should be different objects
         assert toxicities1 is not toxicities2
         # But the Toxicity instances inside might be the same or different
@@ -262,8 +262,7 @@ class TestPipelineConfigDefaultValues:
     def test_config_with_local_base_path_override(self):
         """Test overriding local_base_path (which defaults to '.' in YAML)"""
         import tempfile
-        import os
-        
+
         # Use a valid temporary directory
         with tempfile.TemporaryDirectory() as tmpdir:
             config = PipelineConfig(
@@ -299,7 +298,7 @@ class TestPipelineConfigDefaultValues:
             hf_base_path="test/path",
             env_file=None,
         )
-        
+
         # Verify all toxicities are proper Toxicity instances
         for key, value in config.toxicities.items():
             assert isinstance(
@@ -309,7 +308,7 @@ class TestPipelineConfigDefaultValues:
             assert hasattr(value, "user_description")
             assert hasattr(value, "llm_description")
             assert hasattr(value, "tasks")
-            
+
             # Verify we can access attributes (not dict keys)
             assert isinstance(value.title, str)
             assert isinstance(value.user_description, str)
@@ -325,21 +324,21 @@ class TestPipelineConfigDefaultValues:
             hf_base_path="test/path",
             env_file=None,
         )
-        
+
         # Check a specific toxicity's tasks
         if "personalized_toxicity" in config.toxicities:
             pers_tox = config.toxicities["personalized_toxicity"]
             assert isinstance(pers_tox, Toxicity)
-            
+
             # Check tasks structure
             for task_category, tasks_dict in pers_tox.tasks.items():
-                assert isinstance(tasks_dict, dict), (
-                    f"Task category '{task_category}' should be dict"
-                )
+                assert isinstance(
+                    tasks_dict, dict
+                ), f"Task category '{task_category}' should be dict"
                 for task_name, task in tasks_dict.items():
-                    assert isinstance(task, Task), (
-                        f"Task '{task_name}' should be Task instance, got {type(task)}"
-                    )
+                    assert isinstance(
+                        task, Task
+                    ), f"Task '{task_name}' should be Task instance, got {type(task)}"
                     # Verify Task attributes
                     assert isinstance(task.name, str)
                     assert isinstance(task.llm_description, str)
@@ -379,7 +378,7 @@ class TestPipelineConfigDefaultValues:
                 },
             }
         }
-        
+
         config = PipelineConfig(
             toxicities=custom_toxicities_dict,
             used_chat_model="test_model",
@@ -388,17 +387,17 @@ class TestPipelineConfigDefaultValues:
             hf_base_path="test/path",
             env_file=None,
         )
-        
+
         # Pydantic should have converted the dict to Toxicity instance
         assert len(config.toxicities) == 1
         assert "personalized_toxicity" in config.toxicities
-        
+
         custom_tox = config.toxicities["personalized_toxicity"]
         assert isinstance(custom_tox, Toxicity)
         assert custom_tox.title == "Custom Personalized Toxicity"
         assert custom_tox.user_description == "User facing description"
         assert custom_tox.llm_description == "LLM description"
-        
+
         # Check nested Task instances
         assert "category1" in custom_tox.tasks
         assert "task1" in custom_tox.tasks["category1"]
@@ -409,8 +408,7 @@ class TestPipelineConfigDefaultValues:
 
     def test_config_toxicities_rejects_invalid_toxicity_types(self):
         """Config should reject toxicity types not in ToxicityType enum"""
-        from toxicity_detector.datamodels import ToxicityType
-        
+
         invalid_toxicities_dict = {
             "invalid_toxicity_type": {
                 "title": "Invalid Type",
@@ -419,7 +417,7 @@ class TestPipelineConfigDefaultValues:
                 "tasks": {},
             }
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             PipelineConfig(
                 toxicities=invalid_toxicities_dict,
@@ -429,7 +427,7 @@ class TestPipelineConfigDefaultValues:
                 hf_base_path="test/path",
                 env_file=None,
             )
-        
+
         # Should mention allowed values
         error_msg = str(exc_info.value)
         assert "Allowed toxicities" in error_msg or "invalid_toxicity_type" in error_msg
@@ -486,7 +484,7 @@ class TestPipelineConfigDefaultValues:
     def test_config_all_fields_explicit(self):
         """Test creating config with all fields explicitly provided"""
         import tempfile
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             config = PipelineConfig(
                 local_serialization=True,
