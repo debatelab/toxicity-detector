@@ -21,7 +21,7 @@ from toxicity_detector.config import AppConfig, SubdirConstruction, PipelineConf
 def detect_toxicity(
     input_text: str,
     user_input_source: str | None,
-    toxicity_type: str,
+    toxicity_type: str,  # TODO: use enum
     context_info: str | None,
     pipeline_config: PipelineConfig,
     serialize_result: bool = True,

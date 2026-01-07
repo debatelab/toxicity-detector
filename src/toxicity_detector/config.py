@@ -6,11 +6,56 @@ from huggingface_hub import HfFileSystem
 import os
 from loguru import logger
 from datetime import datetime
+from functools import lru_cache
+from importlib.resources import files
 
 from toxicity_detector.datamodels import Toxicity, ToxicityType
 
 # Minimum required pipeline config version
 MIN_PIPELINE_CONFIG_VERSION = "v0.3"
+
+
+@lru_cache(maxsize=1)
+def _load_default_config_dict() -> Dict[str, Any]:
+    """Load default configuration from YAML. Cached for performance."""
+    try:
+        # Use importlib.resources to access package data
+        config_file = files("toxicity_detector.package_data").joinpath(
+            "default_pipeline_config.yaml"
+        )
+
+        with config_file.open("r", encoding="utf-8") as f:
+            return yaml.safe_load(f)
+    except (FileNotFoundError, AttributeError) as e:
+        logger.error(
+            f"Failed to load default configuration from package data: {e}. "
+            "Ensure package_data is properly installed."
+        )
+        raise
+
+
+def _get_default_for_field(field_name: str) -> Any:
+    """Get default value for a specific field from YAML."""
+    config_dict = _load_default_config_dict()
+    return config_dict.get(field_name)
+
+
+def _get_default_toxicities() -> Dict[str, Toxicity]:
+    """
+    Get default toxicities from YAML and convert to Toxicity instances.
+    
+    This is needed because when using default_factory with a lambda that returns
+    a dict, Pydantic doesn't perform validation/conversion to model instances.
+    We explicitly convert the raw YAML dict to Toxicity instances here.
+    """
+    toxicities_dict = _get_default_for_field("toxicities")
+    if not toxicities_dict:
+        return {}
+    
+    # Convert each toxicity dict to a Toxicity model instance
+    return {
+        key: Toxicity(**value) for key, value in toxicities_dict.items()
+    }
 
 
 class SubdirConstruction(enum.Enum):
@@ -30,26 +75,53 @@ class SubdirConstruction(enum.Enum):
 
 
 class PipelineConfig(BaseModel):
-    local_serialization: bool = True
-    hf_base_path: str | None = None
-    hf_key_name: str | None = None
-    result_data_path: str = "result_data"
-    local_base_path: str | None = None
-    log_path: str = "logs"
-    # one of monthly, weekly, yearly, daily, None
-    subdirectory_construction: Optional[str] = None
-    toxicities: Dict[str, Toxicity] = {}
-    config_version: str = "v0.4"
-    used_chat_model: str
-    description: str | None = None
-    system_prompt: str = (
-        "You are a helpful assistant and an expert for the "
-        "categorisation and annotation of texts.\n"
-        "You read instructions carefully and follow them precisely.\n"
-        "You give concise and clear answers."
+    local_serialization: bool = Field(
+        default_factory=lambda: _get_default_for_field("local_serialization") or True
     )
-    models: Dict[str, Dict[str, Any]] = Field(default_factory=lambda: dict())
-    env_file: str | None = None
+    hf_base_path: str | None = Field(
+        default_factory=lambda: _get_default_for_field("hf_base_path")
+    )
+    hf_key_name: str | None = Field(
+        default_factory=lambda: _get_default_for_field("hf_key_name")
+    )
+    result_data_path: str = Field(
+        default_factory=lambda: (
+            _get_default_for_field("result_data_path") or "result_data"
+        )
+    )
+    local_base_path: str | None = Field(
+        default_factory=lambda: _get_default_for_field("local_base_path")
+    )
+    log_path: str = Field(
+        default_factory=lambda: _get_default_for_field("log_path") or "logs"
+    )
+    # one of monthly, weekly, yearly, daily, None
+    subdirectory_construction: Optional[str] = Field(
+        default_factory=lambda: (_get_default_for_field("subdirectory_construction"))
+    )
+    toxicities: Dict[str, Toxicity] = Field(default_factory=_get_default_toxicities)
+    config_version: str = Field(
+        default_factory=lambda: _get_default_for_field("config_version") or "v0.4"
+    )
+    used_chat_model: str
+    description: str | None = Field(
+        default_factory=lambda: _get_default_for_field("description")
+    )
+    system_prompt: str = Field(
+        default_factory=lambda: _get_default_for_field("system_prompt")
+        or (
+            "You are a helpful assistant and an expert for the "
+            "categorisation and annotation of texts.\n"
+            "You read instructions carefully and follow them precisely.\n"
+            "You give concise and clear answers."
+        )
+    )
+    models: Dict[str, Dict[str, Any]] = Field(
+        default_factory=lambda: _get_default_for_field("models") or {}
+    )
+    env_file: str | None = Field(
+        default_factory=lambda: _get_default_for_field("env_file")
+    )
 
     def __init__(self, **data):
         super().__init__(**data)

@@ -1,0 +1,133 @@
+# Remark: Configs of version v0.3 should be compatible with v0.4 
+config_version: 'v0.4'
+local_serialization: True
+local_base_path: '.'
+result_data_path: 'result_data'
+log_path: 'logs'
+subdirectory_construction: 'daily'
+description: |
+  Konfiguration mit Erläuterungen von "Stereotyp", "Ironie" und "ungerechtfertigt" und Frage nach Kontext beim Indikator "accusation"
+system_prompt: | 
+  You are a helpful assistant and an expert for the categorisation and annotation of texts.
+  You read instructions carefully and follow them precisely.
+  You give concise and clear answers.
+toxicities:
+  personalized_toxicity:
+    title: "Personalisierte Toxizität"
+    user_description: |
+      **Personalisierte toxische Sprache** umfasst Äußerungen, die Beleidigung, Bedrohung oder 
+      Belästigung einer Person beinhalten, gutheißen oder dazu aufrufen, *ohne Bezug auf die Zugehörigkeit* 
+      der Person zu einer Bevölkerungsgruppe. 
+    llm_description: |
+      **Personalisierte toxische Sprache** umfasst Äußerungen, die Beleidigung, Bedrohung oder 
+      Belästigung einer Person beinhalten, gutheißen oder dazu aufrufen, *ohne Bezug auf die Zugehörigkeit* 
+      der Person zu einer Bevölkerungsgruppe.
+    tasks:
+      prepatory_analysis:
+        general_questions: 
+          name: "Allgemeine Fragen"
+          llm_description: |
+            - Werden im Text negative Begriffe verwendet? Wenn ja, welche?
+            - Richtet sich der Text gegen eine einzelne Person oder eine Gruppe? Wenn, ja gegen wen?
+            - Verwendet der Text Ironie, d.h. Sprache, bei der das eigentlich Gemeinte durch dessen Gegenteil ausgedrückt wird? Wenn ja, was ist die eigentliche Bedeutung des Texts?
+            - Bezieht sich der Text auf eine andere Aussage, z.B. über ein Zitat, das durch Anführungszeichen gekennzeichnet wird? Wenn ja, wie wird die andere Aussage vom Text bewertet?
+      indicator_analysis:
+        sexual_harassment: 
+          name: "Sexuelle Belästigung"
+          llm_description: |
+            Enthält die Äußerung sexuelle Kommentare über den Körper einer bestimmten Person, Aufforderungen zu sexuellen Handlungen, oder sonstige Inhalte, die eine bestimmte Person ohne deren Einwilligung anderweitig sexualisieren?
+          # dummy (so far, the example fields are not used)
+          positive_examples: ["... first example ... "]
+          negative_examples: [" ... first negative example"]
+        self_harm: 
+          name: "Aufforderung zur Selbstgefährdung"
+          llm_description: |
+            Wird mit der Äußerung eine bestimmte Person zu selbstgefährdendem oder selbstverletzendem Verhalten aufgefordert?
+        ridicule:
+          name: "Verspottung"
+          llm_description: |
+            Wird sich über eine eine bestimmte Person oder eine Äußerung dieser lächerlich gemacht?
+        threat:
+          name: "Gewaltandrohung"
+          llm_description: |
+            Wird einer bestimmten Person mit Gewalt gedroht, zu Gewalt gegenüber dieser Person aufgerufen oder werden solche Gewalttaten gutgeheißen?
+        insult:
+          name: "Beleidigung"
+          llm_description: |
+            Wird eine bestimmte Person oder eine Gruppe einzelner Personen mit Schimpfwörtern oder Beleidigungen belegt?
+        accusation:
+          name: "Anschuldigung"
+          llm_description: |
+            Wird eine bestimmte Person ungerechtfertigt, d.h. ohne dass dies berechtigt wäre, einer Tat oder Absicht beschuldigt? Wenn ja, könnte die Beschuldigung je nach Kontext der Äußerung gerechtfertigt sein?
+        exclusion:
+          name: "Exkludierende Sprache"
+          llm_description: |
+            Soll mit der Äußerung eine bestimmte Person aus einem öffentlichen Diskurs ausgeschlossen werden oder dazu gebracht werden, sich nicht mehr an einem öffentlichen Diskurs zu beteiligen?
+  hatespeech:
+    title: "Gruppenbezogene Toxizität (Hassrede)"
+    user_description: |
+      Gruppenbezogene toxische Sprache ist Sprache, die aufgrund von Gruppenzugehörigkeit angreift oder herabsetzt, die zu Gewalt oder Hass gegen Gruppen (oder Personen) 
+      aufruft und die auf bestimmten Merkmalen beruht wie körperlicher Erscheinung, Religion, Abstammung, nationale oder ethnische Herkunft, sexuelle Orientierung, 
+      Geschlechtsidentität, politische Einstellung oder andere. Sie kann in verschiedenen Sprachstilen vorkommen, auch in subtilen Formen oder wenn Humor verwendet wird.
+    llm_description: |
+      Gruppenbezogene toxische Sprache ist Sprache, die aufgrund von Gruppenzugehörigkeit angreift oder herabsetzt, die zu Gewalt oder Hass gegen Gruppen (oder Personen) 
+      aufruft und die auf bestimmten Merkmalen beruht wie körperlicher Erscheinung, Religion, Abstammung, nationale oder ethnische Herkunft, sexuelle Orientierung, 
+      Geschlechtsidentität, politische Einstellung oder andere. Sie kann in verschiedenen Sprachstilen vorkommen, auch in subtilen Formen oder wenn Humor verwendet wird.
+    tasks:
+      prepatory_analysis:
+        general_questions: 
+          name: "Allgemeine Fragen"
+          llm_description: |
+            - Werden im Text negative Begriffe verwendet? Wenn ja, welche?
+            - Richtet sich der Text gegen eine Gruppe oder gegen eine Person als Repräsentant einer Gruppe? Wenn, ja gegen wen?
+            - Verwendet der Text Ironie, d.h. Sprache, bei der das eigentlich Gemeinte durch sein Gegenteil ausgedrückt wird? Wenn ja, was ist die eigentliche Bedeutung des Texts?
+            - Bezieht sich der Text auf eine andere Aussage, z.B. über ein Zitat, das durch Anführungszeichen gekennzeichnet wird? Wenn ja, wie wird die andere Aussage vom Text bewertet?
+      indicator_analysis:
+        threat: 
+          name: "Gewaltaufruf"
+          llm_description: |
+            Wird gegenüber einer Gruppe oder gegenüber einem Individuum als Repräsentant dieser Gruppe zu Gewalt 
+            aufgerufen oder solche Gewalttaten gutgeheißen, auch durch Euphemismen oder implizit?
+        victim_shaming: 
+          name: "Opferverächtigung"
+          llm_description: |
+            Werden Opfer von Hasskriminalität oder das Konzept von Hassrede/Diskriminierung/Hasskriminalität gegenüber einer 
+            Gruppe verächtlicht gemacht, verharmlost oder gerechtfertigt? 
+        deadnaming:
+          name: "Misgendering/Deadnaming"
+          llm_description: |
+            Enthält die Äußerung Misgendering oder Deadnaming einer Person?
+        animal_comparison:
+          name: "Herabwürdigender Tiervergleich"
+          llm_description: |
+            Wird eine Gruppe als Ganze oder ein Individuum als Repräsentant:in dieser Gruppe mit nicht-menschlichen 
+            Tieren verglichen oder gleichgesetzt?
+        desease_conflation:
+          name: "Krankheitsgleichsetzung"
+          llm_description: |
+            Wird eine Gruppe als Ganze oder ein Individuum als Repräsentant:in dieser Gruppe mit einer Krankheit, Überträgern 
+            von Krankheiten o.ä. gleichgesetzt? Wird mit (euphemistischen) Begriffen aus dem Wortfeld Krankheit zu Gewalt aufgerufen?
+        stereotyping:
+          name: "Stereotypisierung"
+          llm_description: |
+            Bestärkt die Äußerung schädigende Stereotype, d.h. verbreitete schädigende Vorurteile oder Klischees, gegenüber einer Gruppe?
+        generalisation:
+          name: "Generalisierung"
+          llm_description: |
+            Trifft die Äußerung generalisierte Aussagen über eine Gruppe oder leitet sie vom Verhalten oder den Eigenschaften eines einzelnen Individuums generalisierte Aussagen über eine Gruppe ab?
+        arbitrariness:
+          name: "Aufruf zur gesetzlichen Willkür"
+          llm_description: | 
+            Wird zu gesetzlicher Willkür gegenüber einer Gruppe aufgerufen?
+        accusation:
+          name: "Anschuldigung"
+          llm_description: |
+            Wird eine Gruppe als Ganze oder ein Individuum als Repräsentant:in dieser Gruppe ungerechtfertigt, d.h. ohne dass dies berechtigt wäre, einer Tat oder Absicht beschuldigt? Wenn ja, könnte die Beschuldigung je nach Kontext der Äußerung gerechtfertigt sein?
+        exclusion:
+          name: "Exkludierende Sprache"
+          llm_description: |
+            Soll mit der Äußerung eine Gruppe aus einem öffentlichen Diskurs ausgeschlossen werden oder ihr gesellschaftliche Teilhabe verweigert werden?
+        insult:
+          name: "Beleidigung"
+          llm_description: |
+            Werden negativ besetzte Ausdrücke als Platzhalter für eine Gruppe verwendet oder eine Gruppe als Ganze oder ein Individuum als Repräsentant:in mit Schimpfwörtern belegt?
