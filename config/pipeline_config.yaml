@@ -1,21 +1,20 @@
-config_version: 'v0.3'
-used_chat_model: model_0
+# Remark: Configs of version v0.3 should be compatible with v0.4 
+config_version: 'v0.4'
+# used_chat_model: Llama-3.2-3B (local)
+used_chat_model: Llama-3.2-3B
 local_serialization: True
 hf_base_path: 'datasets/DebateLabKIT/toxicity-detector-appdata'
-result_data_path: 'logs/result_data'
-local_base_path: 'C:/Users/admin/toxicity-detector'
+local_base_path: '.'
+result_data_path: 'result_data'
 log_path: 'logs'
+env_file: '.env'
 subdirectory_construction: 'daily'
 description: |
   Konfiguration mit Erläuterungen von "Stereotyp", "Ironie" und "ungerechtfertigt" und Frage nach Kontext beim Indikator "accusation"
 system_prompt: | 
-  You are a helpful assistant and an expert for the categorisation and annotation of texts.\n
-  You read instructions carefully and follow them precisely. You give concise and clear answers.
-# used data set for random example generation. currently one of:
-# - problem_cases_20251203.csv (all cases up to the 3th of Dec that received feedback: 'incorrect' or 'absolutely_incorrect' or 'suspension')
-# - toxicity_examples_detox_germeval21_n10000.csv
-# - toxicity_examples_detox_germeval21_n5000.csv
-toxicity_examples_data_file: 'toxicity_examples_detox_germeval21_n10000.csv'
+  You are a helpful assistant and an expert for the categorisation and annotation of texts.
+  You read instructions carefully and follow them precisely.
+  You give concise and clear answers.
 toxicities:
   personalized_toxicity:
     title: "Personalisierte Toxizität"
@@ -136,26 +135,29 @@ toxicities:
           name: "Beleidigung"
           llm_description: |
             Werden negativ besetzte Ausdrücke als Platzhalter für eine Gruppe verwendet oder eine Gruppe als Ganze oder ein Individuum als Repräsentant:in mit Schimpfwörtern belegt?
-  # TODO
-  # other_toxic_speech:
-  #   title: "Anderweitige Toxizität"
-  #   user_description: |
-  #     **Anderweitige toxische Sprache** umfasst Äußerungen, die sich nicht negativ gegen Gruppen oder Personen richten, aber trotzdem die Diskussionatmosphäre negativ beeinflussen. Dazu gehört beispielsweise der übermäßige Gebrauch von Schimpfwörtern.
-  #   llm_description: |
-  #     **Anderweitige toxische Sprache** umfasst Äußerungen, die sich nicht negativ gegen Gruppen oder Personen richten, aber trotzdem die Diskussionatmosphäre negativ beeinflussen. Dazu gehört beispielsweise der übermäßige Gebrauch von Schimpfwörtern.
 models:
-  model_0:
-    name: "Llama-3.2-3B over together.ai"
-    description: "NVIDEA NIM API (kostenpflichtig über DebateLab Account)"
+  Llama-3.2-3B:
+    name: "Llama-3.2-3B"
+    description: "Llama-3.2-3B over together.ai"
     base_url: "https://router.huggingface.co/together/v1"
     model: "meta-llama/Llama-3.2-3B-Instruct-Turbo"
-    api_key_name: "hf_debatelab_inference_provider"
+    api_key_name: tode_debatelab_inference_provider
     llm_chain: "chat-chain"
     model_kwargs:
       max_tokens: 512
       temperature: 0.2
       extra_headers: 
         X-HF-Bill-To: "DebateLabKIT"
+  Llama-3.2-3B (local):
+    name: "Llama-3.2-3B (local)"
+    description: "Llama-3.2-3B over together.ai"
+    base_url: "http://127.0.0.1:1234/v1"
+    model: "llama-3.2-3b-instruct"
+    llm_chain: "chat-chain"
+    api_key: no-key-needed
+    model_kwargs:
+      max_tokens: 512
+      temperature: 0.2
   model_1:
     # Currently, does not work. Throws a BadRequestError: 
     # openai.BadRequestError: Error code: 400 - {'type': 'about:blank', 'status': 400, 'title': 'Bad Request', 'detail': 'Inference error'}
