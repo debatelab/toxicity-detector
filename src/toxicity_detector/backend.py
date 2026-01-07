@@ -36,7 +36,7 @@ def detect_toxicity(
     result = ToxicityDetectorResult(
         user_input=input_text,
         user_input_source=user_input_source,
-        toxicity_type=toxicity_type,
+        toxicity_type=toxicity_type,  # TODO: use enum
         context_information=context_info,
         pipeline_config=pipeline_config
     )
@@ -487,10 +487,14 @@ def save_result(result: ToxicityDetectorResult, pipeline_config: PipelineConfig)
     file_name = f"{result.request_id}.yaml"
     dir_path = os.path.join(
         pipeline_config.get_base_path(),
+        pipeline_config.result_data_path,
         subdirectory_path,
     )
     _yaml_dump(
-        dir_path, file_name, result.model_dump(), local_serialization,
+        dir_path,
+        file_name,
+        result.model_dump(),
+        local_serialization,
         make_dirs=True,
         key_name=pipeline_config.hf_key_name
     )
