@@ -1,9 +1,4 @@
-from pydantic import (
-    BaseModel,
-    Field,
-    field_validator,
-    model_validator
-)
+from pydantic import BaseModel, Field, field_validator, model_validator
 import enum
 from typing import Dict, Self, Optional, Any
 import yaml
@@ -32,28 +27,28 @@ class SubdirConstruction(enum.Enum):
 
 class PipelineConfig(BaseModel):
     local_serialization: bool = True
-    hf_base_path: str | None = 'datasets/DebateLabKIT/toxicity-detector-appdata'
+    hf_base_path: str | None = None
     hf_key_name: str | None = None
-    result_data_path: str = 'logs/result_data'
-    local_base_path: str | None = '/home/basti/Nextcloud/Documents/mindmaps/mind/projects/kideku/code/toxicity-detector'
-    log_path: str = 'logs'
+    result_data_path: str = "result_data"
+    local_base_path: str | None = None
+    log_path: str = "logs"
     # one of monthly, weekly, yearly, daily, None
     subdirectory_construction: Optional[str] = None
     toxicities: Dict[str, Toxicity] = {}
     config_version: str | None = None
     used_chat_model: str
     description: str | None = None
-    system_prompt: str = """
-            You are a helpful assistant and an expert for the categorisation and annotation of texts.\n \
-            You read instructions carefully and follow them precisely. You give concise and clear answers.
-            """
-    toxicity_examples_data_file: str | None = None
-    models: Dict[str, Dict[str, Any]] = Field(
-        default_factory=lambda: dict()
+    system_prompt: str = (
+        "You are a helpful assistant and an expert for the "
+        "categorisation and annotation of texts.\n"
+        "You read instructions carefully and follow them precisely.\n"
+        "You give concise and clear answers."
     )
+    toxicity_examples_data_file: str | None = None
+    models: Dict[str, Dict[str, Any]] = Field(default_factory=lambda: dict())
     env_file: str | None = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def load_env_file(self) -> Self:
         if self.env_file is None:
             logger.warning(
@@ -64,6 +59,7 @@ class PipelineConfig(BaseModel):
         else:
             # check if the env file exists
             from os import path
+
             if not path.exists(self.env_file):
                 err_msg = (
                     f"Environment file '{self.env_file}' does not exist. "
@@ -75,54 +71,54 @@ class PipelineConfig(BaseModel):
             else:
                 # load the env file
                 from dotenv import load_dotenv
+
                 load_dotenv(self.env_file)
-            logger.info(
-                f"Loaded environment variables from '{self.env_file}'"
-            )
+            logger.info(f"Loaded environment variables from '{self.env_file}'")
         return self
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_models(self) -> Self:
         allowed_values = set(self.models.keys())
         if len(allowed_values) == 0:
-            raise ValueError(
-                'At least one model must be specified under models'
-            )
+            raise ValueError("At least one model must be specified under models")
         elif self.used_chat_model not in allowed_values:
             raise ValueError(
-                f'used_chat_model must be one of {allowed_values}, got {self.used_chat_model}'
+                f"used_chat_model must be one of {allowed_values}, "
+                f"got {self.used_chat_model}"
             )
         return self
 
-    @field_validator('toxicities')
+    @field_validator("toxicities")
     def validate_toxicity_types(cls, v):
         allowed_values = ToxicityType._value2member_map_.keys()
         toxicity_types = v.keys()
         if not set(toxicity_types).issubset(set(allowed_values)):
             raise ValueError(
-                f'Allowed toxicities are {set(allowed_values)}, got {set(toxicity_types)}'
+                f"Allowed toxicities are {set(allowed_values)}, "
+                f"got {set(toxicity_types)}"
             )
         return v
 
-    @field_validator('subdirectory_construction')
+    @field_validator("subdirectory_construction")
     @classmethod
     def validate_subdirectory_construction(cls, v):
         allowed_values = SubdirConstruction._value2member_map_.keys()
         if (v is not None) and (v not in allowed_values):
             raise ValueError(
-                f'subdirectory_construction must be one of {set(allowed_values)}, got {v}'
+                f"subdirectory_construction must be one "
+                f"of {set(allowed_values)}, got {v}"
             )
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_serialization(self) -> Self:
         if self.local_serialization and self.local_base_path is None:
             raise ValueError(
-                'local_base_path must be set if choosing local serialization'
+                "local_base_path must be set if choosing local serialization"
             )
         elif not self.local_serialization and self.hf_base_path is None:
             raise ValueError(
-                'hf_base_path must be set if not choosing local serialization'
+                "hf_base_path must be set if not choosing local serialization"
             )
         return self
 
@@ -149,19 +145,27 @@ class PipelineConfig(BaseModel):
 
 class UITexts(BaseModel):
     trigger_warning: dict[str, str] = {
-        "message" : """
-        # Benutzunghinweise (*!vorläufige Formulierung!*)
-
-        + **Triggerwarnung:** Die Toxizitätdetektorapp enthält in Form von Beispielen Inhalte, die anstößig oder beunruhigend sein können. Alle Materialien dienen der Unterstützung von Forschungsarbeiten zur Verbesserung der Methoden zur Erkennung von Toxizität. Die enthaltenen Beispiele für Toxizität geben insbesondere nicht wieder, wie die Autoren über bestimmte Identitätsgruppen bzw. Personen denken. Die Beispiele stammen aus dem Korpus ...
-        + **Datenerhebung:** Die eingegebenen Textbeispiele und generierten Kategorisierungen werden für Forschungszwecke gespeichert und benutzt um die Performance von Modelle zu steigern. Darüberhinaus werden keine Daten gesammelt, insbesondere keine personenbezogenen Daten (sofern keine personenbezogenen Daten in das Textfeld eingetragen werden)
-        """,
+        "message": (
+            "# Benutzunghinweise (*!vorläufige Formulierung!*)\n\n"
+            "+ **Triggerwarnung:** Die Toxizitätdetektorapp enthält in Form "
+            "von Beispielen Inhalte, die anstößig oder beunruhigend sein können. "
+            "Alle Materialien dienen der Unterstützung von Forschungsarbeiten zur "
+            "Verbesserung der Methoden zur Erkennung von Toxizität. Die enthaltenen "
+            "Beispiele für Toxizität geben insbesondere nicht wieder, wie die Autoren "
+            "über bestimmte Identitätsgruppen bzw. Personen denken. Die Beispiele "
+            "stammen aus dem Korpus ...\n"
+            "+ **Datenerhebung:** Die eingegebenen Textbeispiele und generierten "
+            "Kategorisierungen werden für Forschungszwecke gespeichert und benutzt "
+            "um die Performance von Modelle zu steigern. Darüberhinaus werden keine "
+            "Daten gesammelt, insbesondere keine personenbezogenen Daten (sofern keine "
+            "personenbezogenen Daten in das Textfeld eingetragen werden)\n"
+        ),
     }
-    app_head = """
-        # 📣 Detektor für toxische Sprache
-
-        In dieser Demoapp kannst Du ausprobieren, wie gut Large Language Models \
-        Toxizität detektieren können.
-        """
+    app_head: str = (
+        "# 📣 Detektor für toxische Sprache\n"
+        "In dieser Demoapp kannst Du ausprobieren, wie gut Large Language Models "
+        "Toxizität detektieren können.\n"
+    )
 
 
 class AppConfig(BaseModel):
@@ -171,8 +175,8 @@ class AppConfig(BaseModel):
     local_pipeline_config: bool = True
     local_pipeline_config_base_path: str | None = None
     hf_pipeline_config_base_path: str | None = None
-    toxicity_examples_hf_base_path: str = 'toxicity_example_data'
-    toxicity_examples_data_file: str = 'toxicity_examples_detox_germeval21_n10000.csv'
+    toxicity_examples_hf_base_path: str = "toxicity_example_data"
+    toxicity_examples_data_file: str = "toxicity_examples_detox_germeval21_n10000.csv"
     toxicity_examples_key_name: str | None = None
     pipeline_config_key_name: str | None = None
     feedback: Dict[str, Any] = {
@@ -187,7 +191,7 @@ class AppConfig(BaseModel):
     ui_texts: UITexts = UITexts()
     env_file: str | None = None
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def load_env_file(self) -> Self:
         if self.env_file is None:
             logger.warning(
@@ -198,6 +202,7 @@ class AppConfig(BaseModel):
         else:
             # check if the env file exists
             from os import path
+
             if not path.exists(self.env_file):
                 err_msg = (
                     f"Environment file '{self.env_file}' does not exist. "
@@ -209,19 +214,23 @@ class AppConfig(BaseModel):
             else:
                 # load the env file
                 from dotenv import load_dotenv
+
                 load_dotenv(self.env_file)
-            logger.info(
-                f"Loaded environment variables from '{self.env_file}'"
-            )
+            logger.info(f"Loaded environment variables from '{self.env_file}'")
         return self
 
     @model_validator(mode="after")
     def validate_toxicity_examples_key_name(self) -> Self:
-        if (not self.toxicity_examples_key_name or len(self.toxicity_examples_key_name.strip()) == 0):
-            logger.warning(f"""
+        if (
+            not self.toxicity_examples_key_name
+            or len(self.toxicity_examples_key_name.strip()) == 0
+        ):
+            logger.warning(
+                f"""
                 toxicity_examples_key_name not set for accessing \
                 toxicity_examples_hf_base_path '{self.toxicity_examples_hf_base_path}'
-                """)
+                """
+            )
         return self
 
     def get_pipeline_config_path(self) -> str:
@@ -235,8 +244,7 @@ class AppConfig(BaseModel):
     def get_default_pipeline_config(self) -> PipelineConfig:
         if self.local_pipeline_config:
             file_path = os.path.join(
-                self.get_pipeline_config_path(),
-                self.default_pipeline_config_file
+                self.get_pipeline_config_path(), self.default_pipeline_config_file
             )
             return PipelineConfig.from_file(file_path)
         else:
@@ -247,7 +255,7 @@ class AppConfig(BaseModel):
             file_path = os.path.join(
                 "hf://datasets",
                 self.get_pipeline_config_path(),
-                self.default_pipeline_config_file
+                self.default_pipeline_config_file,
             ).replace("\\", "/")
             with fs._open(file_path, "rt", encoding="utf_8") as file:
                 return PipelineConfig(**yaml.safe_load(file))
@@ -271,14 +279,17 @@ class AppConfig(BaseModel):
                 )
         else:
             if not self.hf_pipeline_config_base_path:
-                raise ValueError(
-                    "hf_pipeline_config_base_path must be set."
-                )
-            if (not self.pipeline_config_key_name or len(self.pipeline_config_key_name.strip()) == 0):
-                logger.warning(f"""
+                raise ValueError("hf_pipeline_config_base_path must be set.")
+            if (
+                not self.pipeline_config_key_name
+                or len(self.pipeline_config_key_name.strip()) == 0
+            ):
+                logger.warning(
+                    f"""
                     pipeline_config_key_name not set for accessing \
                     hf_pipeline_config_base_path '{self.hf_pipeline_config_base_path}'
-                    """)
+                    """
+                )
             if self.local_pipeline_config_base_path:
                 logger.warning(
                     "local_pipeline_config_base_path parameter will be ignored."

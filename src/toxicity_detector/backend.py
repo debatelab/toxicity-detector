@@ -1,6 +1,5 @@
 from glob import glob
 import os
-from langchain_huggingface import HuggingFaceEndpoint
 from typing import Any, Dict, List, Optional
 
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
@@ -15,14 +14,8 @@ import pandas as pd
 from loguru import logger
 
 from toxicity_detector import MonoModelDetectToxicityChain
-from toxicity_detector.result import (
-    ToxicityDetectorResult
-)
-from toxicity_detector.config import (
-    AppConfig,
-    SubdirConstruction,
-    PipelineConfig
-)
+from toxicity_detector.result import ToxicityDetectorResult
+from toxicity_detector.config import AppConfig, SubdirConstruction, PipelineConfig
 
 
 def detect_toxicity(
@@ -38,7 +31,7 @@ def detect_toxicity(
         user_input_source=user_input_source,
         toxicity_type=toxicity_type,  # TODO: use enum
         context_information=context_info,
-        pipeline_config=pipeline_config
+        pipeline_config=pipeline_config,
     )
 
     def log_msg(msg: str):
@@ -51,9 +44,7 @@ def detect_toxicity(
     # (used for UI logic to attach user feedback and for data serialization)
 
     log_msg(f"Starting new detection request (uuid: {result.request_id}).")
-    context_info = (
-        None if not context_info or context_info.isspace() else context_info
-    )
+    context_info = None if not context_info or context_info.isspace() else context_info
     model = pipeline_config.used_chat_model
 
     log_msg(f"Chosen toxicity type: {toxicity_type}")
@@ -70,8 +61,7 @@ def detect_toxicity(
             # check whether the api key is set as env variable
             if os.environ.get(api_key_name) is None:
                 raise ValueError(
-                    f"The api key name {api_key_name} is not set as "
-                    f"env variable."
+                    f"The api key name {api_key_name} is not set as " f"env variable."
                 )
             api_key = SecretStr(os.environ.get(api_key_name, "no-api-key"))
         else:
@@ -88,9 +78,7 @@ def detect_toxicity(
         if "model_kwargs" in pipeline_config.models[model].keys():
             model_kwargs = pipeline_config.models[model]["model_kwargs"]
 
-        log_msg(
-            f"Model kwargs: {model_kwargs}"
-        )
+        log_msg(f"Model kwargs: {model_kwargs}")
         # building chain
         toxicitiy_detection_chain = MonoModelDetectToxicityChain.build(
             llms_dict={
@@ -100,10 +88,15 @@ def detect_toxicity(
                     base_url=pipeline_config.models[model]["base_url"],
                 )
             },
-            indicators_dict={key: pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"][key].model_dump()
-                             for key in pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"].keys()
-                             },
-            **model_kwargs
+            indicators_dict={
+                key: pipeline_config.toxicities[toxicity_type]
+                .tasks["indicator_analysis"][key]
+                .model_dump()
+                for key in pipeline_config.toxicities[toxicity_type]
+                .tasks["indicator_analysis"]
+                .keys()
+            },
+            **model_kwargs,
         )
     else:
         # TODO: log warning
@@ -143,16 +136,26 @@ def detect_toxicity(
     #         )
     #     })
 
-    indicators_dict = {key: pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"][key].model_dump()
-                       for key in pipeline_config.toxicities[toxicity_type].tasks["indicator_analysis"].keys()}
+    indicators_dict = {
+        key: pipeline_config.toxicities[toxicity_type]
+        .tasks["indicator_analysis"][key]
+        .model_dump()
+        for key in pipeline_config.toxicities[toxicity_type]
+        .tasks["indicator_analysis"]
+        .keys()
+    }
 
     answer = toxicitiy_detection_chain.invoke(
         {
             "system_prompt": pipeline_config.system_prompt,
-            "toxicity_explication": pipeline_config.toxicities[toxicity_type].llm_description,
+            "toxicity_explication": pipeline_config.toxicities[
+                toxicity_type
+            ].llm_description,
             "user_input": input_text,
             "user_input_source": user_input_source,
-            "general_questions": pipeline_config.toxicities[toxicity_type].tasks["prepatory_analysis"]["general_questions"].model_dump(),
+            "general_questions": pipeline_config.toxicities[toxicity_type]
+            .tasks["prepatory_analysis"]["general_questions"]
+            .model_dump(),
             "context_information": context_info,
             "indicators_dict": indicators_dict,
         }
@@ -199,8 +202,7 @@ class ZeroShotClassifier(LLM):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.llm = InferenceClient(
-            self.model,
-            api_key=self.api_token.get_secret_value()
+            self.model, api_key=self.api_token.get_secret_value()
         )
 
     def _call(
@@ -230,14 +232,11 @@ class ZeroShotClassifier(LLM):
             raise ValueError("stop kwargs are not permitted.")
         classification_result = self.llm.zero_shot_classification(
             text=prompt,
-            labels=self.labels,
+            candidate_labels=self.labels,
             multi_label=self.multi_label,
             hypothesis_template=self.hypothesis_template,
         )
-        print(
-            f"zero shot classification return: "
-            f"{classification_result[0].label}"
-        )
+        print(f"zero shot classification return: " f"{classification_result[0].label}")
         # we simply return the first result element (which has by
         # convention the highest probability (?))
         return classification_result[0].label
@@ -270,13 +269,18 @@ def log_message(message: str, pipeline_config: PipelineConfig):
             pipeline_config.log_path,
         )
         os.makedirs(log_dir_path, exist_ok=True)
-        with open(os.path.join(log_dir_path, log_file_name), "a", encoding="utf-8") as log_file:
+        with open(
+            os.path.join(log_dir_path, log_file_name), "a", encoding="utf-8"
+        ) as log_file:
             log_file.write(message + "\n")
     logger.info(message)
 
 
 def _current_subdir(subdirectory_construction: str | None) -> str:
-    if subdirectory_construction is None or subdirectory_construction not in SubdirConstruction.value2formatcode().keys():
+    if (
+        subdirectory_construction is None
+        or subdirectory_construction not in SubdirConstruction.value2formatcode().keys()
+    ):
         return ""
     now = datetime.now()
     dateformat = SubdirConstruction.value2formatcode()[subdirectory_construction]
@@ -289,7 +293,7 @@ def _yaml_dump(
     dict: Dict,
     local_serialization: bool,
     make_dirs: bool = False,
-    key_name: str | None = None
+    key_name: str | None = None,
 ):
     file_path = os.path.join(dir_path, file_name)
     if local_serialization:
@@ -297,15 +301,12 @@ def _yaml_dump(
             os.makedirs(dir_path, exist_ok=True)
         with open(file_path, "w", encoding="utf-8") as f:
             yaml.dump(
-                dict, f, allow_unicode=True,
-                default_flow_style=False, encoding="utf-8"
+                dict, f, allow_unicode=True, default_flow_style=False, encoding="utf-8"
             )
     else:
-        file_path = os.path.join(
-            "hf://datasets",
-            dir_path,
-            file_name
-        ).replace("\\", "/")
+        file_path = os.path.join("hf://datasets", dir_path, file_name).replace(
+            "\\", "/"
+        )
         if key_name:
             fs = HfFileSystem(token=os.environ[key_name])
         else:
@@ -314,12 +315,13 @@ def _yaml_dump(
             fs.makedirs(dir_path, exist_ok=True)
         with fs._open(file_path, "w", encoding="utf-8") as f:
             yaml.dump(
-                dict, f, allow_unicode=True,
-                default_flow_style=False, encoding="utf-8"
+                dict, f, allow_unicode=True, default_flow_style=False, encoding="utf-8"
             )
 
 
-def _yaml_load(file_path: str, local_serialization: bool, key_name: str | None = None) -> Dict:
+def _yaml_load(
+    file_path: str, local_serialization: bool, key_name: str | None = None
+) -> Dict:
     if local_serialization:
         with open(file_path, "r", encoding="utf-8") as f:
             ret_dict = yaml.safe_load(f)
@@ -334,7 +336,9 @@ def _yaml_load(file_path: str, local_serialization: bool, key_name: str | None =
     return ret_dict
 
 
-def _str_load(file_path: str, local_serialization: bool, key_name: str | None = None) -> str:
+def _str_load(
+    file_path: str, local_serialization: bool, key_name: str | None = None
+) -> str:
     logger.info(f"Getting file {file_path}")
     if local_serialization:
         with open(file_path, encoding="utf-8") as f:
@@ -354,14 +358,16 @@ def _str_load(file_path: str, local_serialization: bool, key_name: str | None = 
 
 
 def get_toxicity_example_data(
-    app_config: AppConfig, data_file: str = None
+    app_config: AppConfig, data_file: str | None = None
 ) -> pd.DataFrame:
     if not data_file:
         data_file = app_config.toxicity_examples_data_file
-    example_data_file_path = "/".join([
-        "hf://datasets",
-        app_config.toxicity_examples_hf_base_path,
-        app_config.toxicity_examples_data_file]
+    example_data_file_path = "/".join(
+        [
+            "hf://datasets",
+            app_config.toxicity_examples_hf_base_path,
+            app_config.toxicity_examples_data_file,
+        ]
     )
 
     if app_config.toxicity_examples_key_name:
@@ -371,11 +377,16 @@ def get_toxicity_example_data(
     with fs._open(example_data_file_path, "rb") as f:
         example_data_df = pd.read_csv(f)
     logger.info("Loading examples done.")
-    return pd.DataFrame(example_data_df[['text', 'source']])
+    return pd.DataFrame(example_data_df[["text", "source"]])
     # return example_data_df['text'].tolist()
 
 
-def _str_dump(file_path: str, file_str: str, local_serialization: bool, key_name: str | None = None):
+def _str_dump(
+    file_path: str,
+    file_str: str,
+    local_serialization: bool,
+    key_name: str | None = None,
+):
     if local_serialization:
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(file_str)
@@ -403,15 +414,12 @@ def config_file_exists(app_config: AppConfig, config_file_name: str) -> bool:
     local_serialization = app_config.local_pipeline_config
     if local_serialization:
         config_file_path = os.path.join(
-            app_config.get_pipeline_config_path(),
-            config_file_name
+            app_config.get_pipeline_config_path(), config_file_name
         )
         return os.path.isfile(config_file_path)
     else:
-        config_file_path = "/".join([
-            "hf://datasets",
-            app_config.get_pipeline_config_path(),
-            config_file_name]
+        config_file_path = "/".join(
+            ["hf://datasets", app_config.get_pipeline_config_path(), config_file_name]
         )
         if app_config.pipeline_config_key_name:
             fs = HfFileSystem(token=os.environ[app_config.pipeline_config_key_name])
@@ -428,11 +436,13 @@ def pipeline_config_as_string(
     return _str_load(
         os.path.join(app_config.get_pipeline_config_path(), pipeline_config_file_name),
         app_config.local_pipeline_config,
-        app_config.pipeline_config_key_name
+        app_config.pipeline_config_key_name,
     )
 
 
-def pipeline_config_file_names(app_config: AppConfig, config_version: str | None = None):
+def pipeline_config_file_names(
+    app_config: AppConfig, config_version: str | None = None
+):
     local_serialization = app_config.local_pipeline_config
     if not config_version:
         config_version = app_config.pipeline_config_version
@@ -444,9 +454,7 @@ def pipeline_config_file_names(app_config: AppConfig, config_version: str | None
             with open(config_file_path, "rt", encoding="utf-8") as file:
                 file_dict = yaml.safe_load(file)
                 if file_dict.get("config_version") == config_version:
-                    config_file_names.append(
-                        os.path.basename(config_file_path)
-                    )
+                    config_file_names.append(os.path.basename(config_file_path))
     else:
         if app_config.pipeline_config_key_name:
             fs = HfFileSystem(token=os.environ[app_config.pipeline_config_key_name])
@@ -457,9 +465,7 @@ def pipeline_config_file_names(app_config: AppConfig, config_version: str | None
             with fs._open(config_file_path, "rb", encoding="utf-8") as file:
                 file_dict = yaml.safe_load(file)
                 if file_dict.get("config_version") == config_version:
-                    config_file_names.append(
-                        os.path.basename(config_file_path)
-                    )
+                    config_file_names.append(os.path.basename(config_file_path))
 
     return config_file_names
 
@@ -477,7 +483,7 @@ def update_feedback(
     if feedback_likert_content:
         for key, value in feedback_likert_content.items():
             result.feedback[key] = value
-    
+
     save_result(result, pipeline_config)
 
 
@@ -496,13 +502,8 @@ def save_result(result: ToxicityDetectorResult, pipeline_config: PipelineConfig)
         result.model_dump(),
         local_serialization,
         make_dirs=True,
-        key_name=pipeline_config.hf_key_name
+        key_name=pipeline_config.hf_key_name,
     )
-
-# def get_chat_model(token: str, repo_id: str):
-#     llm = HuggingFaceEndpoint(repo_id=repo_id, huggingfacehub_api_token=token)
-#     # chat_model = ChatHuggingFace(llm=llm)
-#     return llm
 
 
 def get_openai_chat_model(

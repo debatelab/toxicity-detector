@@ -31,11 +31,16 @@ _APP_CONFIG_FILE = os.getenv(
 app_config = AppConfig.from_file(_APP_CONFIG_FILE)
 
 config_file_names = pipeline_config_file_names(app_config)
-log_message(f"Valid configs: {config_file_names}", app_config.get_default_pipeline_config())
+log_message(
+    f"Valid configs: {config_file_names}", app_config.get_default_pipeline_config()
+)
 
 # variable is set on HF via the space
 if "RUNS_ON_SPACES" not in os.environ.keys():
-    log_message("Gradioapp runs locally. Loading env variables...", app_config.get_default_pipeline_config())
+    log_message(
+        "Gradioapp runs locally. Loading env variables...",
+        app_config.get_default_pipeline_config(),
+    )
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -48,18 +53,13 @@ def _tasks(pipeline_config: PipelineConfig, toxicity_type) -> List[str]:
     task_groups = pipeline_config.toxicities[toxicity_type].tasks.keys()
     for task_group in task_groups:
         task_names.extend(
-                list(
-                    pipeline_config.toxicities[toxicity_type].tasks[
-                        task_group
-                    ].keys()
-                )
-            )
+            list(pipeline_config.toxicities[toxicity_type].tasks[task_group].keys())
+        )
     return task_names
 
 
 def _load_toxicity_example_data(
-    app_config: AppConfig,
-    pipeline_config: PipelineConfig
+    app_config: AppConfig, pipeline_config: PipelineConfig
 ) -> pd.DataFrame:
     examples_data_file = None
     if pipeline_config.toxicity_examples_data_file is not None:
@@ -104,7 +104,9 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
 
     # state variable to store source string for the user input
     user_input_source_st = gr.State("")
-    with gr.Tabs(selected="detector_tab" if app_config.developer_mode else "tw_tab") as tabs:
+    with gr.Tabs(
+        selected="detector_tab" if app_config.developer_mode else "tw_tab"
+    ) as tabs:
         # TAB: TOXICITY DETECTION
         with gr.Tab(
             label="Toxizitätsdetektor",
@@ -119,25 +121,29 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                     radio_toxicitiy_type = gr.Radio(
                         [
                             (value.title, key)
-                            for (key, value) in pipeline_config_state.value.toxicities.items()
+                            for (
+                                key,
+                                value,
+                            ) in pipeline_config_state.value.toxicities.items()
                         ],
                         value=init_toxicity_key,
                         label="Toxizitätsdefinition",
-                        info=(
-                            "Welche Art von Toxizität soll "
-                            "detektiert werden?"
-                        ),
+                        info=("Welche Art von Toxizität soll " "detektiert werden?"),
                     )
-                    with gr.Accordion(
-                        "Definition der gewählten Toxizitätsart:"
-                    ):
+                    with gr.Accordion("Definition der gewählten Toxizitätsart:"):
                         md_toxicity_description = gr.Markdown(
-                            pipeline_config_state.value.toxicities[init_toxicity_key].user_description
+                            pipeline_config_state.value.toxicities[
+                                init_toxicity_key
+                            ].user_description
                         )
 
+                    # TODO: allow model selection if set in config
                     # dropdown_model = gr.Dropdown(
-                    #         [(value['name'], key) for (key, value) in model_config_dict.value['models'].items()],
-                    #         value=list(model_config_dict.value['models'].keys())[0],
+                    #         [(value['name'], key)
+                    #          for (key, value)
+                    #          in pipeline_config_dict.value['models'].items()
+                    #          ],
+                    #         value=list(pipeline_config_dict.value['models'].keys())[0],
                     #         label="Benutztes Sprachmodell",
                     #         info="Wähle das zu benutzende Modell aus!"
                     # )
@@ -148,32 +154,20 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                     random_example_btn = gr.Button("Zufälliges Beispiel")
                     context_tb = gr.Textbox(
                         label="Kontextinfo",
-                        info=(
-                            "Eingabe von Kontextinformation "
-                            "(kann leer bleiben)"
-                        ),
+                        info=("Eingabe von Kontextinformation " "(kann leer bleiben)"),
                     )
                     categorize_btn = gr.Button("Detect Toxicity")
 
                 with gr.Column(scale=2, min_width=300):
                     general_questions_output_tb = gr.Textbox(
                         label=(
-                            "General questions output/preprocessing "
-                            "(developer mode)"
+                            "General questions output/preprocessing " "(developer mode)"
                         ),
-                        visible=(
-                            True
-                            if app_config.developer_mode
-                            else False
-                        ),
+                        visible=(True if app_config.developer_mode else False),
                     )
                     indicators_output_tb = gr.Textbox(
                         label="Indicator analysis output (developer mode)",
-                        visible=(
-                            True
-                            if app_config.developer_mode
-                            else False
-                        ),
+                        visible=(True if app_config.developer_mode else False),
                     )
                     ouput_text_box = gr.Textbox(
                         label="Kategorisierung der Eingabe durch den Detektor"
@@ -204,11 +198,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                     )
                     with gr.Accordion(
                         "Taskspecific feedback (developer mode)",
-                        visible=(
-                            True
-                            if app_config.developer_mode
-                            else False
-                        ),
+                        visible=(True if app_config.developer_mode else False),
                     ):
 
                         @gr.render(
@@ -222,16 +212,16 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                             interactive: bool,
                         ):
                             global app_config
-                            for task in _tasks(pipeline_config_state.value, toxicity_type):
+                            for task in _tasks(
+                                pipeline_config_state.value, toxicity_type
+                            ):
                                 radio = gr.Radio(
                                     [
                                         (value, key)
                                         for (
                                             key,
                                             value,
-                                        ) in app_config.feedback[
-                                            "likert_scale"
-                                        ].items()
+                                        ) in app_config.feedback["likert_scale"].items()
                                     ],
                                     label=(
                                         f"Korrektheit der Antwort "
@@ -281,7 +271,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                 example = toxicity_example_data.loc[
                     randrange(len(toxicity_example_data)), :
                 ]
-                return (example["text"], example["source"])
+                return (str(example["text"]), str(example["source"]))
 
             random_example_btn.click(
                 random_input_example,
@@ -373,7 +363,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                     True,
                     dict(),  # feedback content
                     False,  # output dirty
-                    result
+                    result,
                 )
 
             categorize_btn.click(
@@ -392,7 +382,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                     feedback_interactive_st,
                     feedback_likert_content_st,
                     output_dirty_st,
-                    result_state
+                    result_state,
                 ],
             )
             # Changing toxicity type: -> update description
@@ -408,9 +398,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
 
             # Saving feedback
             feedback_btn.click(
-                lambda v, w, x, y, z: update_feedback(
-                    v, w, x, y, z
-                ),
+                lambda v, w, x, y, z: update_feedback(v, w, x, y, z),
                 [
                     pipeline_config_state,
                     result_state,
@@ -427,9 +415,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
             pipeline_config_state.change(
                 lambda toxicity_type, pipeline_config: (
                     pipeline_config.toxicities[toxicity_type].user_description,
-                    _load_toxicity_example_data(
-                        app_config, pipeline_config
-                    ),
+                    _load_toxicity_example_data(app_config, pipeline_config),
                     ToxicityDetectorResult(),
                     True,  # set output ui elements to dirty
                 ),
@@ -440,7 +426,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                     result_state,
                     output_dirty_st,
                 ],
-                show_progress='hidden'
+                show_progress="hidden",
             )
 
         # TAB: CONFIGUARTION
@@ -461,17 +447,13 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                 with gr.Column(scale=1, min_width=50):
                     dropdown_config = gr.Dropdown(
                         choices=config_file_names,
-                        value=os.path.basename(
-                            app_config.default_pipeline_config_file
-                        ),
+                        value=os.path.basename(app_config.default_pipeline_config_file),
                         allow_custom_value=False,
                         label="Konfigurationsdatei",
                         info="Wähle die zu ladende Konfigurationsdatei aus!",
-                        interactive=True
+                        interactive=True,
                     )
-                    reload_config_btn = gr.Button(
-                        "Eingegebene Konfiguration laden"
-                    )
+                    reload_config_btn = gr.Button("Eingegebene Konfiguration laden")
                     with gr.Group():
                         gr.Markdown("  Speichern der aktuellen Konfiguration.")
                         new_config_name_tb = gr.Textbox(
@@ -495,28 +477,27 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
 
             def load_selected_config(
                 config_file_name: str,
-            ) -> Tuple[str, PipelineConfig, gr.Dropdown]:
+            ) -> Tuple[HighlightedCode, PipelineConfig, gr.Dropdown]:
                 global config_file_names
                 config_path = os.path.join(
-                    app_config.get_pipeline_config_path(),
-                    config_file_name
+                    app_config.get_pipeline_config_path(), config_file_name
                 )
                 if app_config.local_pipeline_config:
                     pipeline_config = PipelineConfig.from_file(config_path)
                 else:
                     pipeline_config = PipelineConfig.from_hf(config_path)
-                pipeline_config_str = pipeline_config_as_string(app_config, config_file_name)
+                pipeline_config_str = pipeline_config_as_string(
+                    app_config, config_file_name
+                )
                 yaml_input_str = HighlightedCode(
-                        pipeline_config_str,
-                        language="yaml",
-                        interactive=True
-                    )
+                    pipeline_config_str, language="yaml", interactive=True
+                )
                 dropdown_config = gr.Dropdown(
                     choices=config_file_names,
                     value=config_file_name,
                     allow_custom_value=False,
                     label="Konfigurationsdatei",
-                    info="Wähle die zu ladende Konfigurationsdatei aus!"
+                    info="Wähle die zu ladende Konfigurationsdatei aus!",
                 )
                 return yaml_input_str, pipeline_config, dropdown_config
 
@@ -526,9 +507,9 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                 [
                     yaml_config_input,
                     pipeline_config_state,
-                    dropdown_config
+                    dropdown_config,
                 ],  # update config text field and config_dict
-                show_progress='full'
+                show_progress="full",
             )
 
             # SAVE-PIPELINE-CONFIG BUTTON
@@ -536,8 +517,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                 global config_file_names
                 if not new_config_name or new_config_name.isspace():
                     raise gr.Error(
-                        "Der Name der neuen Konfiguration "
-                        "darf nicht leer sein."
+                        "Der Name der neuen Konfiguration " "darf nicht leer sein."
                     )
                 # save str from yaml_config_input as file
                 new_config_file_name = f"{new_config_name}.yaml"
@@ -547,9 +527,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                         f"{new_config_file_name} existiert schon."
                     )
 
-                dump_pipeline_config_str(
-                    new_config_file_name, config_str, app_config
-                )
+                dump_pipeline_config_str(new_config_file_name, config_str, app_config)
 
                 # Update the dropdown with the new config file
                 config_file_names.append(new_config_file_name)
@@ -558,7 +536,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                     gr.Dropdown(
                         choices=config_file_names,
                         value=new_config_file_name,
-                        interactive=True
+                        interactive=True,
                     ),
                     PipelineConfig(**parse_yaml_str(config_str)),
                 )
@@ -583,9 +561,7 @@ with gr.Blocks(title="Chatbot Detektor für toxische Sprache") as demo:
                 lambda x: (
                     x,
                     gr.Checkbox(
-                        label=app_config.ui_texts.trigger_warning[
-                            "checkbox_label"
-                        ],
+                        label=app_config.ui_texts.trigger_warning["checkbox_label"],
                         interactive=False,
                     ),
                     gr.Tab("Toxizitätsdetektor", visible=True),
