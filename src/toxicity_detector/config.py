@@ -166,10 +166,14 @@ class PipelineConfig(BaseModel):
         else:
             # check if the env file exists
             from os import path
+            env_file_path = path.join(
+                self.get_base_path(),
+                self.env_file,
+            )
 
-            if not path.exists(self.env_file):
+            if not path.exists(env_file_path):
                 err_msg = (
-                    f"Environment file '{self.env_file}' does not exist. "
+                    f"Environment file '{env_file_path}' does not exist. "
                     "Please provide a valid path to the environment file. "
                     "Or set it to None if you don't need it and set the "
                     "API keys in other ways as environment variables."
@@ -179,8 +183,8 @@ class PipelineConfig(BaseModel):
                 # load the env file
                 from dotenv import load_dotenv
 
-                load_dotenv(self.env_file)
-                logger.info(f"Loaded environment variables from '{self.env_file}'")
+                load_dotenv(env_file_path)
+                logger.info(f"Loaded environment variables from '{env_file_path}'")
         return self
 
     @model_validator(mode="after")
