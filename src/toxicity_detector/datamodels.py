@@ -10,6 +10,13 @@ class ToxicityType(enum.Enum):
     PERS = "personalized_toxicity"
 
 
+class ToxicityAnswer(enum.Enum):
+    """Enum for toxicity detection results."""
+    TRUE = "true"  # Text contains toxic content
+    FALSE = "false"  # Text does not contain toxic content
+    UNCLEAR = "unclear"  # Insufficient information to determine
+
+
 class Task(BaseModel):
     name: str
     llm_description: str

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+import re
 
 from operator import itemgetter
 
@@ -14,6 +15,8 @@ from langchain_core.language_models.base import BaseLanguageModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
+from toxicity_detector.datamodels import ToxicityAnswer
+
 
 class BaseChainBuilder(ABC):
     """Abstract Base Class for chain builders based on langchain"""
@@ -22,9 +25,7 @@ class BaseChainBuilder(ABC):
     # How to individually configure models?
     @classmethod
     @abstractmethod
-    def build(
-        cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs
-    ) -> Runnable:
+    def build(cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs) -> Runnable:
         """Abstract factory method to build an LLM chain.
 
         Args:
@@ -67,9 +68,7 @@ class IdentifyToxicContentZeroShotChain(BaseChainBuilder):
     ]
 
     @classmethod
-    def build(
-        cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs
-    ) -> Runnable:
+    def build(cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs) -> Runnable:
         """Simple chain based on zero-shot model for categorization.
 
         Uses a chat model for ex post justification of the categorization.
@@ -96,9 +95,7 @@ class IdentifyToxicContentZeroShotChain(BaseChainBuilder):
                         == inputs["passed"]["labels"]["toxic"]
                         else "not toxic"
                     ),
-                    "toxicity_explication": inputs["passed"][
-                        "toxicity_explication"
-                    ],
+                    "toxicity_explication": inputs["passed"]["toxicity_explication"],
                     "user_input": inputs["passed"]["user_input"],
                 }
             )
@@ -177,6 +174,9 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
                 "Formliere die Antworten einfach als Aussagen.\n"
                 "- Formuliere bitte eine kurze Erläuterung bzw. "
                 "Begründung für deine Einschätzung."
+                "- Als Ergebnis einer Analyse kann auch festgestellt werden, "
+                "dass nicht genügend Informationen vorliegen, um eine "
+                "Einschätzung hinreichend sicher zu treffen. "
             ),
         ),
     ]
@@ -186,8 +186,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
         (
             "user",
             (
-                "Aufgabe: Analysiere ob der untere Text toxischen Inhalt "
-                "enthält.\n"
+                "Aufgabe: Analysiere ob der untere Text toxischen Inhalt enthält.\n"
                 "Beachte für deine Analyse die folgende "
                 "Begriffserläuterung von 'Toxizität':\n"
                 "/// Toxizitätserläuterung:\n"
@@ -210,6 +209,12 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
                 "- {{ indicators_dict[indicator_key]['name']}}: "
                 "{{ indicator_result }}\n"
                 "{% endfor %}"
+                "Wichtiger Hinweis: "
+                "Als Ergebnis einer Analyse kann auch festgestellt werden, "
+                "dass nicht genügend Informationen vorliegen, um eine "
+                "Einschätzung hinreichend sicher zu treffen. "
+                "Bspw. wenn der Text unterschiedliche "
+                "Interpretationen bzgl. seiner Toxizität zulässt.\n"
                 "Analysiere nun bitte den Text und begründe deine "
                 "Einschätzung!"
             ),
@@ -225,9 +230,88 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
             "zusammen:\n"
             '"True", wenn der Text toxischen Inhalt enthält,\n'
             '"False", wenn der Text keinen toxischen Inhalt enthält,\n'
+            '"Unclear", wenn die gegebenen Informationen nicht ausreichen '
+            "um festzustellen, ob der Text toxischen Inhalt enthält oder nicht.\n"
             "Just return the word, without the quotation marks.",
         ),
     ]
+
+    @staticmethod
+    def _parse_toxicity_response(response: str) -> Optional[ToxicityAnswer]:
+        """Parse the toxicity response from the LLM.
+
+        Handles variations in the response format including prefixes like
+        "Answer:", "Antwort:", "The answer is:", etc.
+
+        Args:
+            response (str): The LLM response to parse
+
+        Returns:
+            Optional[ToxicityAnswer]:
+                - ToxicityAnswer.TRUE if the text contains toxic content
+                - ToxicityAnswer.FALSE if the text doesn't contain toxic content
+                - ToxicityAnswer.UNCLEAR if the result is unclear
+                - None if the response cannot be parsed
+        """
+        # Normalize the response: strip whitespace, remove quotes, lowercase
+        normalized = response.strip().strip("\"'").lower()
+
+        # Remove common prefixes (English and German)
+        prefix_patterns = [
+            r"^(answer|antwort|the answer is|die antwort ist|result|ergebnis)\s*:?\s*",
+        ]
+        for pattern in prefix_patterns:
+            normalized = re.sub(pattern, "", normalized, flags=re.IGNORECASE)
+        normalized = normalized.strip().strip("\"'")
+
+        # Check for TRUE indicators (toxic content)
+        true_indicators = ["true", "yes", "ja", "toxic", "toxisch", "wahr"]
+        if normalized in true_indicators:
+            return ToxicityAnswer.TRUE
+
+        # Check for FALSE indicators (non-toxic content)
+        false_indicators = [
+            "false",
+            "no",
+            "nein",
+            "not toxic",
+            "non-toxic",
+            "nicht toxisch",
+            "falsch",
+        ]
+        if normalized in false_indicators:
+            return ToxicityAnswer.FALSE
+
+        # Check for UNCLEAR indicators
+        unclear_indicators = [
+            "unclear",
+            "unklar",
+            "unsure",
+            "unknown",
+            "unbekannt",
+            "uncertain",
+            "unsicher",
+        ]
+        if normalized in unclear_indicators:
+            return ToxicityAnswer.UNCLEAR
+
+        # If response contains these keywords, extract the meaning
+        if any(keyword in normalized for keyword in ["true", "toxic"]):
+            # Make sure it's not negated
+            if not any(neg in normalized for neg in ["not", "non", "nicht", "kein"]):
+                return ToxicityAnswer.TRUE
+
+        if any(
+            keyword in normalized
+            for keyword in ["false", "not toxic", "non-toxic", "nicht toxisch"]
+        ):
+            return ToxicityAnswer.FALSE
+
+        if any(keyword in normalized for keyword in ["unclear", "unklar", "unsure"]):
+            return ToxicityAnswer.UNCLEAR
+
+        # Default to None if we can't parse the response
+        return None
 
     @classmethod
     def prompts(cls, **kwargs: Any) -> Dict:
@@ -248,9 +332,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
                     **kwargs,
                 )
                 .to_string()
-                for indicator_key, indicator in kwargs[
-                    "indicators_dict"
-                ].items()
+                for indicator_key, indicator in kwargs["indicators_dict"].items()
             },
             "aggregation": ChatPromptTemplate.from_messages(
                 cls._prompt_indicator_aggregation, template_format="jinja2"
@@ -323,9 +405,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
         main_chain = (
             # We add the indicators dict to the
             # General questions chain (preprocessing)
-            RunnablePassthrough.assign(
-                preprocessing_results=general_props_chain
-            )
+            RunnablePassthrough.assign(preprocessing_results=general_props_chain)
             # Branches: independent indicator chains
             | RunnablePassthrough.assign(
                 indicator_analysis=RunnableParallel(
@@ -347,7 +427,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
                 # TODO: Perhaps, set temperature to 0
                 | llm.bind(**model_kwargs)
                 | StrOutputParser()
-                | (lambda input: True if input.lower() in ["true"] else False)
+                | cls._parse_toxicity_response
             )
         )
 
@@ -398,9 +478,7 @@ class IdentifyToxicContentChatChain(BaseChainBuilder):
     # Chain builder
 
     @classmethod
-    def build(
-        cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs
-    ) -> Runnable:
+    def build(cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs) -> Runnable:
         """Builds a simplistic chain for identifying toxicity.
 
         Args:

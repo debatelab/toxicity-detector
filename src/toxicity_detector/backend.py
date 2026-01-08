@@ -16,6 +16,7 @@ from loguru import logger
 from toxicity_detector import MonoModelDetectToxicityChain
 from toxicity_detector.result import ToxicityDetectorResult
 from toxicity_detector.config import AppConfig, SubdirConstruction, PipelineConfig
+from toxicity_detector.datamodels import ToxicityAnswer
 
 
 def detect_toxicity(
@@ -276,6 +277,14 @@ def _yaml_dump(
     make_dirs: bool = False,
     key_name: str | None = None,
 ):
+    # Set up YAML representers for enums
+    def enum_representer(dumper, data):
+        """YAML representer for enums - serialize as their value"""
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data.value)
+
+    # Register representers
+    yaml.add_representer(ToxicityAnswer, enum_representer)
+
     file_path = os.path.join(dir_path, file_name)
     if local_serialization:
         if make_dirs:

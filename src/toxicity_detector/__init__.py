@@ -34,6 +34,7 @@ from .config import (
 
 from .datamodels import (
     ToxicityType,
+    ToxicityAnswer,
     Toxicity,
     Task
 )
@@ -58,6 +59,7 @@ __all__ = [
     "get_openai_chat_model",
     # Config, output and other basic classes
     "ToxicityType",
+    "ToxicityAnswer",
     "Toxicity",
     "Task",
     "ToxicityDetectorResult",
