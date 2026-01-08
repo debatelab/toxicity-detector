@@ -5,6 +5,7 @@
 result_data
 .vscode
 .env
+.python-version
 
 # Python-generated files
 __pycache__/
