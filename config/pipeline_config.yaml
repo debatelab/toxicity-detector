@@ -19,7 +19,8 @@ local_serialization: True
 # hf_base_path: 'datasets/username/dataset-name'
 
 # local_base_path: Root directory for local storage when local_serialization 
-# is True. All paths (result_data_path, log_path) are relative to this.
+# is True. All paths (result_data_path, log_path) and the 
+# provided env_file are relative to this.
 local_base_path: '.'
 
 # result_data_path: Directory for saving detection results (relative to base_path).
