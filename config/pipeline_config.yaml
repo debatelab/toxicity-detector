@@ -1,21 +1,93 @@
+# =============================================================================
+# MODEL SELECTION
+# =============================================================================
+# Specifies which model from the 'models' section below should be used for 
+# toxicity detection. Must match one of the keys in the 'models' dictionary.
+used_chat_model: Llama-3.2-3B (local)
+
+# =============================================================================
+# DATA STORAGE CONFIGURATION
+# =============================================================================
+# Controls where detection results and logs are saved.
+
+# local_serialization: If True, saves results to local filesystem. 
+# If False, saves to HuggingFace Hub (requires hf_base_path and hf_key_name).
+local_serialization: True
+
+# Uncomment if needed: HuggingFace dataset path for storing results when 
+# local_serialization is False (e.g., 'datasets/username/dataset-name').
+# hf_base_path: 'datasets/username/dataset-name'
+
+# local_base_path: Root directory for local storage when local_serialization 
+# is True. All paths (result_data_path, log_path) are relative to this.
+local_base_path: '.'
+
+# result_data_path: Directory for saving detection results (relative to base_path).
+# Each result is saved as a YAML file named with a UUID.
+result_data_path: 'result_data'
+
+# log_path: Directory for application logs (relative to base_path).
+# Logs are automatically rotated daily and retained for 30 days.
+log_path: 'logs'
+
+# =============================================================================
+# ENVIRONMENT & API KEYS
+# =============================================================================
+# env_file: Path to .env file containing API keys for model providers.
+# Keys are referenced by name in the 'models' section (see api_key_name field).
+env_file: '.env'
+
+# =============================================================================
+# RESULT ORGANIZATION
+# =============================================================================
+# subdirectory_construction: Automatically organizes results into subdirectories.
+# Options: 'daily', 'weekly', 'monthly', 'yearly', or null for no subdirectories.
+# Example: 'daily' creates folders like 'result_data/2026_01_08/'
+subdirectory_construction: 'daily'
+
+# =============================================================================
+# CONFIGURATION METADATA
+# =============================================================================
+# config_version: Version of the configuration format. Must be >= v0.3.
+# Used to ensure compatibility with the toxicity detector code.
 # Remark: Configs of version v0.3 should be compatible with v0.4 
 config_version: 'v0.4'
-# used_chat_model: Llama-3.2-3B (local)
-used_chat_model: Llama-3.2-3B
-local_serialization: True
-hf_base_path: 'datasets/DebateLabKIT/toxicity-detector-appdata'
-local_base_path: '.'
-result_data_path: 'result_data'
-log_path: 'logs'
-env_file: '.env'
-subdirectory_construction: 'daily'
+
+# description: Human-readable description of this specific configuration.
+# Useful for documenting what makes this config unique or its intended use case.
 description: |
-  Konfiguration mit Erläuterungen von "Stereotyp", "Ironie" und "ungerechtfertigt" und Frage nach Kontext beim Indikator "accusation"
+  Configuration of the Toxicity Detector pipeline with ...
+
+# =============================================================================
+# LLM SYSTEM PROMPT
+# =============================================================================
+# system_prompt: Instructions sent to the LLM before each analysis request.
+# Sets the tone and expertise level for the model's responses.
 system_prompt: | 
   You are a helpful assistant and an expert for the categorisation and annotation of texts.
   You read instructions carefully and follow them precisely.
   You give concise and clear answers.
+
+# =============================================================================
+# TOXICITY TYPE DEFINITIONS
+# =============================================================================
+# toxicities: Defines different types of toxicity that can be detected.
+# Each toxicity type has:
+# - title: Display name for users
+# - user_description: Explanation shown to end users
+# - llm_description: Definition provided to the LLM for analysis
+# - tasks: Analysis tasks including preparatory questions and specific indicators
+# 
+# ATTENTION: For now, you cannot define additional toxicity types here. However,
+# you cann add, remove or change the specific indicators for both toxicity types
+# the general questions that are used in the prepatory analysis.
+# 
 toxicities:
+  # ---------------------------------------------------------------------------
+  # PERSONALIZED TOXICITY
+  # ---------------------------------------------------------------------------
+  # Toxicity directed at specific individuals without reference to group identity.
+  # Includes insults, threats, harassment, sexual harassment, etc.
   personalized_toxicity:
     title: "Personalisierte Toxizität"
     user_description: |
@@ -67,6 +139,13 @@ toxicities:
           name: "Exkludierende Sprache"
           llm_description: |
             Soll mit der Äußerung eine bestimmte Person aus einem öffentlichen Diskurs ausgeschlossen werden oder dazu gebracht werden, sich nicht mehr an einem öffentlichen Diskurs zu beteiligen?
+  
+  # ---------------------------------------------------------------------------
+  # HATESPEECH (GROUP-BASED TOXICITY)
+  # ---------------------------------------------------------------------------
+  # Toxicity targeting groups or individuals based on group membership.
+  # Includes hate speech, discrimination based on identity characteristics
+  # (appearance, religion, ethnicity, sexual orientation, gender identity, etc.).
   hatespeech:
     title: "Gruppenbezogene Toxizität (Hassrede)"
     user_description: |
@@ -135,120 +214,39 @@ toxicities:
           name: "Beleidigung"
           llm_description: |
             Werden negativ besetzte Ausdrücke als Platzhalter für eine Gruppe verwendet oder eine Gruppe als Ganze oder ein Individuum als Repräsentant:in mit Schimpfwörtern belegt?
+
+# =============================================================================
+# MODEL CONFIGURATIONS
+# =============================================================================
+# models: Dictionary of available LLM configurations.
+# Each model requires:
+# - name: Display name (used in the Gradio app)
+# - description: Purpose or provider info (optional)
+# - base_url: API endpoint URL
+# - model: Model identifier (repo ID or endpoint-specific name)
+# - llm_chain: Type of chain (for now, only "chat-chain" is available)
+# - api_key or api_key_name: Authentication (direct key or env var name)
+# - model_kwargs: Additional parameters (max_tokens, temperature, etc.)
+#
+# ATTENTION: For security reason, we discourage to put API keys in this 
+# file. Instead, use the option to specify the name for an environment variable 
+# via `api_key_name` that stores the API key.
+#
+# The model specified in 'used_chat_model' at the top determines which 
+# configuration is actually used during toxicity detection.
+# You can specify different models and switch easily between them via
+# the `used_chat_model` or via a dropdown menu in the Gradio app.
 models:
-  Llama-3.2-3B:
-    name: "Llama-3.2-3B"
-    description: "Llama-3.2-3B over together.ai"
-    base_url: "https://router.huggingface.co/together/v1"
-    model: "meta-llama/Llama-3.2-3B-Instruct-Turbo"
-    api_key_name: tode_debatelab_inference_provider
-    llm_chain: "chat-chain"
-    model_kwargs:
-      max_tokens: 512
-      temperature: 0.2
-      extra_headers: 
-        X-HF-Bill-To: "DebateLabKIT"
+  # ---------------------------------------------------------------------------
+  # Example model configuration: Served locally via LM Studio (https://lmstudio.ai/) 
+  # ---------------------------------------------------------------------------
   Llama-3.2-3B (local):
     name: "Llama-3.2-3B (local)"
-    description: "Llama-3.2-3B over together.ai"
-    base_url: "http://127.0.0.1:1234/v1"
+    description: "Llama-3.2-3B over LM Studio"
+    base_url: "http://127.0.0.1:1234/v1"  # Local server
     model: "llama-3.2-3b-instruct"
     llm_chain: "chat-chain"
-    api_key: no-key-needed
+    api_key: no-key-needed  # Direct API key (use for local servers without auth)
     model_kwargs:
       max_tokens: 512
       temperature: 0.2
-  model_1:
-    # Currently, does not work. Throws a BadRequestError: 
-    # openai.BadRequestError: Error code: 400 - {'type': 'about:blank', 'status': 400, 'title': 'Bad Request', 'detail': 'Inference error'}
-    name: "Mixtral-8x7B-Instruct-v0.1"
-    description: "NVIDEA NIM API (kostenpflichtig über DebateLab Account)"
-    base_url: "https://huggingface.co/api/integrations/dgx/v1"
-    model: "mistralai/Mixtral-8x7B-Instruct-v0.1"
-    api_key_name: "kideku_toxicity_app_nim"
-    llm_chain: "chat-chain"
-    max_tokens: 512
-    temperature: 0.2
-  model_2:
-    name: "Llama-3.1-70B-Instruct"
-    description: "NVIDEA NIM API (kostenpflichtig über DebateLab Account)"
-    base_url: "https://huggingface.co/api/integrations/dgx/v1"
-    model: "meta-llama/Llama-3.1-70B-Instruct"
-    api_key_name: "kideku_toxicity_app_nim"
-    llm_chain: "chat-chain"
-    max_tokens: 1024
-    temperature: 0.2
-  model_3:
-    name: "Meta-Llama-3-8B-Instruct"
-    description: "NVIDEA NIM API (kostenpflichtig über DebateLab Account)"
-    base_url: "https://huggingface.co/api/integrations/dgx/v1"
-    model: "meta-llama/Meta-Llama-3-8B-Instruct"
-    api_key_name: "kideku_toxicity_app_nim"
-    llm_chain: "chat-chain"
-    max_tokens: 512
-    temperature: 0.2
-  model_4_old:
-    name: "Mistral-7B-Instruct-v0.2"
-    description: "Zum Testen (freie Inference API, derzeit über den privaten Token von SC)"
-    base_url: "https://api-inference.huggingface.co/v1/"
-    #repo_id: "mistralai/Mistral-7B-Instruct-v0.2"
-    model: "mistralai/Mistral-7B-Instruct-v0.2"
-    llm_chain: "chat-chain"
-    api_key_name: "HF_TOKEN_KIDEKU_INFERENCE"
-    max_tokens: 1024
-    temperature: 0.2
-  # with the new InferenceProviders baseUrls changed on HF
-  model_4:
-    name: "Mistral-7B-Instruct-v0.3"
-    description: "Zum Testen (freie Inference API, derzeit über den privaten Token von SC)"
-    base_url: "https://router.huggingface.co/hf-inference/v1/"
-    #repo_id: "mistralai/Mistral-7B-Instruct-v0.2"
-    model: "mistralai/Mistral-7B-Instruct-v0.3"
-    llm_chain: "chat-chain"
-    api_key_name: "HF_TOKEN_KIDEKU_INFERENCE"
-    max_tokens: 1024
-    temperature: 0.2
-  model_5:
-    name: "tgi@kriton"
-    description: "TGI Server vom ITZ zum Testen. (im Moment bitte nicht nehmen)"
-    base_url: "http://kriton.philosophie.kit.edu:8080/v1/"
-    model: "tgi"
-    api_key: "no-key-required"
-    llm_chain: "chat-chain"
-    max_tokens: 1024
-    temperature: 0.2
-  model_6:
-    name: "deberta-v3-base-zeroshot-v2.0 (zero-shot categorization)"
-    description: "Zeroshot Classifier (kann man im Moment nicht nehmen)"
-    repo_id: "MoritzLaurer/deberta-v3-base-zeroshot-v2.0"
-    llm_chain: "zero-shot-chain"
-  model_7:
-    name: "Llama-3.1-70B-Instruct"
-    description: "HF dedicated endpoint (debatelab)"
-    base_url: "https://ev6086dt6s7nn1b5.us-east-1.aws.endpoints.huggingface.cloud/v1/"
-    model: "meta-llama/Llama-3.1-70B-Instruct"
-    api_key_name: "HF_ENDPOINT_TOKEN_TOXICITY_DETECTOR"
-    backend_type: "tgi"
-    max_tokens: 2048
-    temperature: 0.2
-  model_8:
-    # local model
-    name: "deepseek-r1-distill-qwen-7b"
-    description: "HF dedicated endpoint (debatelab)"
-    base_url: "http://localhost:1234/v1/"
-    model: "deepseek-r1-distill-qwen-7b"
-    llm_chain: "chat-chain"
-    api_key: "no-key-required"
-    max_tokens: 1024
-    temperature: 0.2
-  model_9:
-    # local model
-    name: "llama-3.1-argunaut-1-8b-spin"
-    description: "local OPenAI-like endpoint using LMStudio"
-    base_url: "http://localhost:1234/v1/"
-    model: "meta-llama-3.1-8b-instruct"
-    llm_chain: "chat-chain"
-    api_key: "no-key-required"
-    max_tokens: 1024
-    temperature: 0.2
-  
