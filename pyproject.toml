@@ -22,7 +22,9 @@ dependencies = [
 [dependency-groups]
 # dependencies for dev env
 dev = [
-    # "arize-phoenix>=11.22.0",
+    # observation
+    "arize-phoenix",
+    "openinference-instrumentation-langchain",
     "ipykernel",
     "pip>=25.2",
     "pytest>=8.0.0",
