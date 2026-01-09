@@ -299,7 +299,7 @@ def _yaml_dump(
     # Set up YAML representers for enums
     def enum_representer(dumper, data):
         """YAML representer for enums - serialize as their value"""
-        return dumper.represent_scalar('tag:yaml.org,2002:str', data.value)
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data.value)
 
     # Register representers
     yaml.add_representer(ToxicityAnswer, enum_representer)
@@ -313,7 +313,14 @@ def _yaml_dump(
                 dict, f, allow_unicode=True, default_flow_style=False, encoding="utf-8"
             )
     else:
-        file_path = os.path.join("hf://datasets", dir_path, file_name).replace(
+        # Strip 'datasets/' prefix if present to avoid duplication
+        # (hf_base_path may include 'datasets/', but HfFileSystem path
+        # should not duplicate it)
+        clean_dir_path = dir_path
+        if dir_path.startswith("datasets/"):
+            clean_dir_path = dir_path[len("datasets/"):]
+
+        file_path = os.path.join("hf://datasets", clean_dir_path, file_name).replace(
             "\\", "/"
         )
         if key_name:
@@ -321,11 +328,16 @@ def _yaml_dump(
         else:
             fs = HfFileSystem()
         if make_dirs:
-            fs.makedirs(dir_path, exist_ok=True)
-        with fs._open(file_path, "w", encoding="utf-8") as f:
-            yaml.dump(
-                dict, f, allow_unicode=True, default_flow_style=False, encoding="utf-8"
-            )
+            # Also strip prefix for makedirs
+            clean_makedirs_path = dir_path
+            if dir_path.startswith("datasets/"):
+                clean_makedirs_path = dir_path[len("datasets/"):]
+            fs.makedirs(clean_makedirs_path, exist_ok=True)
+        # HfFileSystem requires binary mode
+        with fs.open(file_path, "wb") as f:
+            # yaml.dump to string first, then encode to bytes
+            yaml_str = yaml.dump(dict, allow_unicode=True, default_flow_style=False)
+            f.write(yaml_str.encode("utf-8"))
 
 
 def _yaml_load(
@@ -335,12 +347,17 @@ def _yaml_load(
         with open(file_path, "r", encoding="utf-8") as f:
             ret_dict = yaml.safe_load(f)
     else:
-        file_path = os.path.join("hf://datasets", file_path).replace("\\", "/")
+        # Strip 'datasets/' prefix if present to avoid duplication
+        clean_file_path = file_path
+        if file_path.startswith("datasets/"):
+            clean_file_path = file_path[len("datasets/") :]
+        file_path = os.path.join("hf://datasets", clean_file_path).replace("\\", "/")
         if key_name:
             fs = HfFileSystem(token=os.environ[key_name])
         else:
             fs = HfFileSystem()
-        with fs._open(file_path, "rb", encoding="utf-8") as f:
+        # HfFileSystem requires binary mode, no encoding parameter
+        with fs.open(file_path, "rb") as f:
             ret_dict = yaml.safe_load(f)
     return ret_dict
 
@@ -354,14 +371,19 @@ def _str_load(
             # Read the contents of the file into a variable
             f_str = f.read()
     else:
-        file_path = os.path.join("hf://datasets", file_path).replace("\\", "/")
+        # Strip 'datasets/' prefix if present to avoid duplication
+        clean_file_path = file_path
+        if file_path.startswith("datasets/"):
+            clean_file_path = file_path[len("datasets/") :]
+        file_path = os.path.join("hf://datasets", clean_file_path).replace("\\", "/")
         if key_name:
             fs = HfFileSystem(token=os.environ[key_name])
         else:
             fs = HfFileSystem()
-        with fs._open(file_path, "rb", encoding="utf-8") as f:
-            # Read the contents of the file into a variable
-            f_str = f.read()
+        # HfFileSystem requires binary mode, no encoding parameter
+        with fs.open(file_path, "rb") as f:
+            # Read the contents of the file as bytes and decode
+            f_str = f.read().decode("utf-8")
     logger.info(f"Got file {file_path}")
     return f_str
 
@@ -400,13 +422,18 @@ def _str_dump(
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(file_str)
     else:
-        file_path = os.path.join("hf://datasets", file_path).replace("\\", "/")
+        # Strip 'datasets/' prefix if present to avoid duplication
+        clean_file_path = file_path
+        if file_path.startswith("datasets/"):
+            clean_file_path = file_path[len("datasets/"):]
+        file_path = os.path.join("hf://datasets", clean_file_path).replace("\\", "/")
         if key_name:
             fs = HfFileSystem(token=os.environ[key_name])
         else:
             fs = HfFileSystem()
-        with fs._open(file_path, "w", encoding="utf-8") as f:
-            f.write(file_str)
+        # HfFileSystem requires binary mode
+        with fs.open(file_path, "wb") as f:
+            f.write(file_str.encode("utf-8"))
 
 
 def dump_pipeline_config_str(
