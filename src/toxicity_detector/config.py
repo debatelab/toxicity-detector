@@ -184,10 +184,13 @@ class PipelineConfig(BaseModel):
             # check if the env file exists
             from os import path
 
-            env_file_path = path.join(
-                self.get_base_path(),
-                self.env_file,
-            )
+            # env_file_path = path.join(
+            #     self.get_base_path(),
+            #     self.env_file,
+            # )
+            # env path should be absolute or relative to working dir
+            # instead of relative to base path (since this might point to HF)
+            env_file_path = self.env_file
 
             if not path.exists(env_file_path):
                 err_msg = (
