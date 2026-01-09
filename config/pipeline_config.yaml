@@ -49,10 +49,10 @@ subdirectory_construction: 'daily'
 # =============================================================================
 # CONFIGURATION METADATA
 # =============================================================================
-# config_version: Version of the configuration format. Must be >= v0.3.
+# config_version: Version of the configuration format. Must be >= v0.4.
 # Used to ensure compatibility with the toxicity detector code.
-# Remark: Configs of version v0.3 should be compatible with v0.4 
-config_version: 'v0.4'
+# Remark: Configs of version v0.5 should be compatible with v0.5 
+config_version: 'v0.5'
 
 # description: Human-readable description of this specific configuration.
 # Useful for documenting what makes this config unique or its intended use case.

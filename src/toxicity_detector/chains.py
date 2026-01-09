@@ -25,12 +25,13 @@ class BaseChainBuilder(ABC):
     # How to individually configure models?
     @classmethod
     @abstractmethod
-    def build(cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs) -> Runnable:
+    def build(cls, llms_dict: Dict[str, BaseLanguageModel], **kwargs) -> Runnable:
         """Abstract factory method to build an LLM chain.
 
         Args:
             llms_dict (Dict[str, BaseLanguageModel]): The models to be
                 used (names, keys are given by convention).
+            **kwargs: Additional parameters including prompts and model kwargs.
 
         Returns:
             Runnable: Chain
@@ -41,34 +42,13 @@ class BaseChainBuilder(ABC):
 class IdentifyToxicContentZeroShotChain(BaseChainBuilder):
     """Chain using chat model to explain/justify toxicity categorisation."""
 
-    # Chain builder
-
-    # Chat prompts
-
-    _prompt_explain_toxicity = [
-        ("system", "{system_prompt}"),
-        (
-            "user",
-            (
-                "Task: The text below was characterized as "
-                "{toxicity_value}. Suppose that this evaluation is true.\n"
-                "Justify this evaluation."
-                "Read the following background information carefully "
-                "before answering!\n"
-                "/// Background_information about toxic content:\n"
-                "{toxicity_explication}"
-                "\n///\n"
-                "/// The text that was characterized as {toxicity_value}:\n"
-                "{user_input}\n"
-                "\n///\n"
-                "Can you please explain why the given characterization "
-                "is correct?"
-            ),
-        ),
-    ]
-
     @classmethod
-    def build(cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs) -> Runnable:
+    def build(  # type: ignore[override]
+        cls,
+        llms_dict: Dict[str, BaseLanguageModel],
+        explain_toxicity: list[tuple[str, str]],
+        **model_kwargs,
+    ) -> Runnable:
         """Simple chain based on zero-shot model for categorization.
 
         Uses a chat model for ex post justification of the categorization.
@@ -77,6 +57,7 @@ class IdentifyToxicContentZeroShotChain(BaseChainBuilder):
             llms_dict (Dict[str, BaseLanguageModel]): A dict with one
                 model of the form `{'zero_shot_model': the_zero_shot_model,
                 'chat_model': the_chat_model}`
+            explain_toxicity: List of (role, content) tuples for the prompt
 
         Returns:
             Runnable: Chain
@@ -99,7 +80,7 @@ class IdentifyToxicContentZeroShotChain(BaseChainBuilder):
                     "user_input": inputs["passed"]["user_input"],
                 }
             )
-            | ChatPromptTemplate.from_messages(cls._prompt_explain_toxicity)
+            | ChatPromptTemplate.from_messages(explain_toxicity)
             | llms_dict["chat_model"].bind(**model_kwargs)
         )
         return main_chain
@@ -120,121 +101,6 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
     - context_information: Context information about the text (may be
       empty).
     """
-
-    _prompt_preprocessing = [
-        ("system", "{{ system_prompt }}"),
-        (
-            "user",
-            (
-                "Aufgabe: Beantworte die folgenden Fragen über den zu "
-                "analysierenden Text:\n"
-                "{{ general_questions['llm_description'] }}\n"
-                "/// Der Text, den Du analysieren sollst:\n"
-                "{{ user_input }}\n"
-                "\n///\n"
-                "{% if context_information %}\n"
-                "Beachte für die Analyse die folgenden relevanten "
-                "Kontextinformationen:\n"
-                "{{ context_information }}.\n"
-                "{% endif %}"
-                "Hinweise:\n"
-                '- Starte die Antwort nicht mit "Ja, ..." bzw. "Nein, ..." '
-                "Formuliere die Antworten einfach als Aussagen.\n"
-                "- Du musst die Antworten nicht erklären."
-            ),
-        ),
-    ]
-
-    _prompt_indicator_classification = [
-        ("system", "{{ system_prompt }}"),
-        (
-            "user",
-            (
-                "Aufgabe: Trifft das folgende Merkmal auf den zu "
-                "analysierenden Text zu?\n"
-                "/// Erläuterung des Merkmals: \n"
-                # TODO: Add the name of the indicator here
-                "{{ indicator_description }}\n"
-                "\n///\n"
-                "/// Der Text, den Du analysieren sollst:\n"
-                "{{ user_input }}\n"
-                "\n///\n"
-                "{% if context_information %}\n"
-                "Beachte für die Analyse die folgenden relevanten "
-                "Kontextinformationen:\n"
-                "{{ context_information }}.\n"
-                "{% endif %}"
-                "Ein vorherige Analyse ergab bereits die folgenden "
-                "vorläufigen Analyseergebnisse:\n"
-                "{{ preprocessing_results }}\n"
-                "Hinweise:\n"
-                "- Beachte für die Beantwortung die vorher genannten "
-                "vorläufigen Analyseergebnisse!\n"
-                '- Starte die Antwort nicht mit "Ja, ..." bzw. "Nein, ..." '
-                "Formliere die Antworten einfach als Aussagen.\n"
-                "- Formuliere bitte eine kurze Erläuterung bzw. "
-                "Begründung für deine Einschätzung."
-                "- Als Ergebnis einer Analyse kann auch festgestellt werden, "
-                "dass nicht genügend Informationen vorliegen, um eine "
-                "Einschätzung hinreichend sicher zu treffen. "
-            ),
-        ),
-    ]
-
-    _prompt_indicator_aggregation = [
-        ("system", "{{ system_prompt }}"),
-        (
-            "user",
-            (
-                "Aufgabe: Analysiere ob der untere Text toxischen Inhalt enthält.\n"
-                "Beachte für deine Analyse die folgende "
-                "Begriffserläuterung von 'Toxizität':\n"
-                "/// Toxizitätserläuterung:\n"
-                "{{ toxicity_explication }}"
-                "\n///\n"
-                "/// Der Text, den du analysieren sollts:\n"
-                "{{ user_input }}\n"
-                "\n///\n"
-                "{% if context_information %}\n"
-                "Beachte für die Analyse die folgenden relevanten "
-                "Kontextinformationen:\n"
-                "{{ context_information }}.\n"
-                "{% endif %}"
-                "Beachte für deine Analyse die folgendenden vorläufigen "
-                "Analyseergebnisse:\n"
-                "{{ preprocessing_results }}\n"
-                "Eine Indikatorenanalyse ergab:\n"
-                "{% for indicator_key, indicator_result in "
-                "indicator_analysis.items() %}"
-                "- {{ indicators_dict[indicator_key]['name']}}: "
-                "{{ indicator_result }}\n"
-                "{% endfor %}"
-                "Wichtiger Hinweis: "
-                "Als Ergebnis einer Analyse kann auch festgestellt werden, "
-                "dass nicht genügend Informationen vorliegen, um eine "
-                "Einschätzung hinreichend sicher zu treffen. "
-                "Bspw. wenn der Text unterschiedliche "
-                "Interpretationen bzgl. seiner Toxizität zulässt.\n"
-                "Analysiere nun bitte den Text und begründe deine "
-                "Einschätzung!"
-            ),
-        ),
-    ]
-    _formatting_prompt_msgs = [
-        ("system", "{system_prompt}"),
-        ("user", "Analysiere ob der untere Text toxischen Inhalt enthält."),
-        ("assistant", "{analysis_result}"),
-        (
-            "user",
-            "Danke! Fasse die Antwort nun als Kurzantwort in einem Wort "
-            "zusammen:\n"
-            '"True", wenn der Text toxischen Inhalt enthält,\n'
-            '"False", wenn der Text keinen toxischen Inhalt enthält,\n'
-            '"Unclear", wenn die gegebenen Informationen nicht ausreichen '
-            "um festzustellen, ob der Text toxischen Inhalt enthält oder nicht.\n"
-            "Just return the word, without the quotation marks.",
-        ),
-    ]
 
     @staticmethod
     def _parse_toxicity_response(response: str) -> Optional[ToxicityAnswer]:
@@ -314,16 +180,34 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
         return None
 
     @classmethod
-    def prompts(cls, **kwargs: Any) -> Dict:
+    def prompts(
+        cls,
+        preprocessing: list[tuple[str, str]],
+        indicator_classification: list[tuple[str, str]],
+        indicator_aggregation: list[tuple[str, str]],
+        **kwargs: Any,
+    ) -> Dict:
+        """Generate formatted prompts for debugging/logging.
+
+        Args:
+            preprocessing: Preprocessing prompt template
+            indicator_classification: Indicator classification
+                prompt template
+            indicator_aggregation: Aggregation prompt template
+            **kwargs: Variables to format into the prompts
+
+        Returns:
+            Dict with formatted prompts
+        """
         ret_dict = {
             "preprocessing": ChatPromptTemplate.from_messages(
-                cls._prompt_preprocessing, template_format="jinja2"
+                preprocessing, template_format="jinja2"
             )
             .format_prompt(**kwargs)
             .to_string(),
             "indicators": {
                 indicator_key: ChatPromptTemplate.from_messages(
-                    cls._prompt_indicator_classification,
+                    indicator_classification,
                     template_format="jinja2",
                 )
                 .format_prompt(
@@ -335,7 +219,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
                 for indicator_key, indicator in kwargs["indicators_dict"].items()
             },
             "aggregation": ChatPromptTemplate.from_messages(
-                cls._prompt_indicator_aggregation, template_format="jinja2"
+                indicator_aggregation, template_format="jinja2"
             )
             .format_prompt(**kwargs)
             .to_string(),
@@ -343,9 +227,13 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
         return ret_dict
 
     @classmethod
-    def build(
+    def build(  # type: ignore[override]
         cls,
         llms_dict: Dict[str, BaseLanguageModel],
+        preprocessing: list[tuple[str, str]],
+        indicator_classification: list[tuple[str, str]],
+        indicator_aggregation: list[tuple[str, str]],
+        formatting_prompt_msgs: list[tuple[str, str]],
         indicators_dict: Dict[str, Dict[str, str]] | None = None,
         **model_kwargs,
     ) -> Runnable:
@@ -354,7 +242,14 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
         Args:
             llms_dict (Dict[str, BaseLanguageModel]): A dict with one
                 model of the form `{'chat_model': the_chat_model}`
-
+            preprocessing: List of (role, content) tuples for
+                preprocessing prompt
+            indicator_classification: List of (role, content) tuples
+                for indicator prompt
+            indicator_aggregation: List of (role, content) tuples for
+                aggregation prompt
+            formatting_prompt_msgs: List of (role, content) tuples for
+                formatting prompt
             indicators_dict (Dict[str, Dict[str, str]]): A dict with all
                 relevant indicators of the form
                 `{<indicator_key>: {'name': <indicator name>,
@@ -370,9 +265,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
         # sub chain: preprocessing: analysing text w.r.t.
         # general (relevant) properties
         general_props_chain = (
-            ChatPromptTemplate.from_messages(
-                cls._prompt_preprocessing, template_format="jinja2"
-            )
+            ChatPromptTemplate.from_messages(preprocessing, template_format="jinja2")
             | llm.bind(**model_kwargs)
             | StrOutputParser()
         )
@@ -385,7 +278,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
                     indicator_description=lambda x: indicator_description,
                 )
                 | ChatPromptTemplate.from_messages(
-                    cls._prompt_indicator_classification,
+                    indicator_classification,
                     template_format="jinja2",
                 )
                 | llm.bind(**model_kwargs)
@@ -396,7 +289,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
         # sub chain: aggregation chain
         aggregation_chain = (
             ChatPromptTemplate.from_messages(
-                cls._prompt_indicator_aggregation, template_format="jinja2"
+                indicator_aggregation, template_format="jinja2"
             )
             | llm.bind(**model_kwargs)
             | StrOutputParser()
@@ -422,7 +315,7 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
             # Adding binary answer
             | RunnablePassthrough.assign(
                 contains_toxicity=ChatPromptTemplate.from_messages(
-                    cls._formatting_prompt_msgs
+                    formatting_prompt_msgs, template_format="jinja2"
                 )
                 # TODO: Perhaps, set temperature to 0
                 | llm.bind(**model_kwargs)
@@ -437,59 +330,45 @@ class MonoModelDetectToxicityChain(BaseChainBuilder):
 class IdentifyToxicContentChatChain(BaseChainBuilder):
     """Chain that uses a Chatmodel for the categorisation."""
 
-    # Chat prompts
-
-    _prompt_identify_toxicity = [
-        ("system", "{system_prompt}"),
-        (
-            "user",
-            (
-                "Task: Identify toxic content in the text below.\n"
-                "Read the following background information carefully "
-                "before answering!\n"
-                "/// Background_information about toxic content:\n"
-                "{toxicity_explication}"
-                "\n///\n"
-                "/// The text that you should analyse:\n"
-                "{user_input}\n"
-                "\n///\n"
-                "Can you please identify toxic content and explain your "
-                "decisions?"
-            ),
-        ),
-    ]
-    # Preprocessing methods
-
-    pass
-
-    # Postprocessing methods
-
-    pass
-
     # for debuggin/loggin only:
     @classmethod
-    def format_prompt(cls, **kwargs: Any) -> str:
+    def format_prompt(
+        cls, identify_toxicity: list[tuple[str, str]], **kwargs: Any
+    ) -> str:
+        """Format prompt for debugging/logging.
+
+        Args:
+            identify_toxicity: List of (role, content) tuples for the prompt
+            **kwargs: Variables to format into the prompt
+
+        Returns:
+            Formatted prompt as string
+        """
         return (
-            ChatPromptTemplate.from_messages(cls._prompt_identify_toxicity)
+            ChatPromptTemplate.from_messages(identify_toxicity)
             .format_prompt(**kwargs)
             .to_string()
         )
 
-    # Chain builder
-
     @classmethod
-    def build(cls, llms_dict: Dict[str, BaseLanguageModel], **model_kwargs) -> Runnable:
+    def build(  # type: ignore[override]
+        cls,
+        llms_dict: Dict[str, BaseLanguageModel],
+        identify_toxicity: list[tuple[str, str]],
+        **model_kwargs,
+    ) -> Runnable:
         """Builds a simplistic chain for identifying toxicity.
 
         Args:
             llms_dict (Dict[str, BaseLanguageModel]): A dict with one
                 model of the form `{'chat_model': the_chat_model}`
+            identify_toxicity: List of (role, content) tuples for the prompt
 
         Returns:
             Runnable: Chain
         """
         main_chain = (
-            ChatPromptTemplate.from_messages(cls._prompt_identify_toxicity)
+            ChatPromptTemplate.from_messages(identify_toxicity)
             | llms_dict["chat_model"].bind(**model_kwargs)
             | StrOutputParser()
         )

@@ -26,6 +26,9 @@ MIN_PIPELINE_CONFIG_VERSION = "v0.4"
 #     the app config)
 #   + renamed: `personalized_toxicity` -> `personalized_toxic_speech`
 #     (!BREAKING CHANGE!)
+# v0.5: moving remaing hard coded prompts to config
+#   + only adding fields -> no breaking changes
+#   + new fields: prompts.
 
 
 @lru_cache(maxsize=1)
@@ -132,6 +135,9 @@ class PipelineConfig(BaseModel):
     )
     env_file: str | None = Field(
         default_factory=lambda: _get_default_for_field("env_file")
+    )
+    prompt_templates: Dict[str, list[Dict[str, str]]] = Field(
+        default_factory=lambda: _get_default_for_field("prompt_templates") or {}
     )
 
     def __init__(self, **data):
@@ -286,6 +292,24 @@ class PipelineConfig(BaseModel):
         else:
             assert self.hf_base_path is not None
             return self.hf_base_path
+
+    def get_prompt_messages(self, prompt_name: str) -> list[tuple[str, str]]:
+        """Get prompt messages as list of (role, content) tuples for LangChain.
+
+        Args:
+            prompt_name: Name of the prompt in the config
+
+        Returns:
+            List of (role, content) tuples ready for ChatPromptTemplate.from_messages
+
+        Raises:
+            ValueError: If prompt_name is not found in configuration
+        """
+        if prompt_name not in self.prompt_templates:
+            raise ValueError(f"Prompt '{prompt_name}' not found in configuration")
+
+        prompt_list = self.prompt_templates[prompt_name]
+        return [(msg["role"], msg["content"]) for msg in prompt_list]
 
     @staticmethod
     def from_file(file_path: str) -> "PipelineConfig":

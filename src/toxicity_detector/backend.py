@@ -86,6 +86,16 @@ def detect_toxicity(
                     base_url=pipeline_config.models[model]["base_url"],
                 )
             },
+            preprocessing=pipeline_config.get_prompt_messages("preprocessing"),
+            indicator_classification=pipeline_config.get_prompt_messages(
+                "indicator_classification"
+            ),
+            indicator_aggregation=pipeline_config.get_prompt_messages(
+                "indicator_aggregation"
+            ),
+            formatting_prompt_msgs=pipeline_config.get_prompt_messages(
+                "formatting_prompt_msgs"
+            ),
             indicators_dict={
                 key: pipeline_config.toxicities[toxicity_type]
                 .tasks["indicator_analysis"][key]
@@ -162,7 +172,16 @@ def detect_toxicity(
 
     result.answer = answer
     # adding prompts for logging
-    prompts = MonoModelDetectToxicityChain.prompts(**result.answer)
+    prompts = MonoModelDetectToxicityChain.prompts(
+        preprocessing=pipeline_config.get_prompt_messages("preprocessing"),
+        indicator_classification=pipeline_config.get_prompt_messages(
+            "indicator_classification"
+        ),
+        indicator_aggregation=pipeline_config.get_prompt_messages(
+            "indicator_aggregation"
+        ),
+        **result.answer,
+    )
     result.answer["prompts"] = prompts
     # saving the result
     # TODO: as async

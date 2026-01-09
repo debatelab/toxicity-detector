@@ -131,3 +131,108 @@ toxicities:
           name: "Beleidigung"
           llm_description: |
             Werden negativ besetzte Ausdrücke als Platzhalter für eine Gruppe verwendet oder eine Gruppe als Ganze oder ein Individuum als Repräsentant:in mit Schimpfwörtern belegt?
+prompt_templates:
+  explain_toxicity:
+    - role: system
+      content: "{{ system_prompt }}"
+    - role: user
+      content: |
+        Task: The text below was characterized as {{ toxicity_value }}. Suppose that this evaluation is true.
+        Justify this evaluation.Read the following background information carefully before answering!
+        /// Background_information about toxic content:
+        {{ toxicity_explication }}
+        ///
+        /// The text that was characterized as {{ toxicity_value }}:
+        {{ user_input }}
+        ///
+        Can you please explain why the given characterization is correct?
+  preprocessing:
+    - role: system
+      content: "{{ system_prompt }}"
+    - role: user
+      content: |
+        Aufgabe: Beantworte die folgenden Fragen über den zu analysierenden Text:
+        {{ general_questions['llm_description'] }}
+        /// Der Text, den Du analysieren sollst:
+        {{ user_input }}
+        ///
+        {% if context_information %}
+        Beachte für die Analyse die folgenden relevanten Kontextinformationen:
+        {{ context_information }}.
+        {% endif %}Hinweise:
+        - Starte die Antwort nicht mit "Ja, ..." bzw. "Nein, ..." Formuliere die Antworten einfach als Aussagen.
+        - Du musst die Antworten nicht erklären.
+  indicator_classification:
+    - role: system
+      content: "{{ system_prompt }}"
+    - role: user
+      content: |
+        Aufgabe: Trifft das folgende Merkmal auf den zu analysierenden Text zu?
+        /// Erläuterung des Merkmals: 
+        {{ indicator_description }}
+        ///
+        /// Der Text, den Du analysieren sollst:
+        {{ user_input }}
+        ///
+        {% if context_information %}
+        Beachte für die Analyse die folgenden relevanten Kontextinformationen:
+        {{ context_information }}.
+        {% endif %}Ein vorherige Analyse ergab bereits die folgenden vorläufigen Analyseergebnisse:
+        {{ preprocessing_results }}
+        Hinweise:
+        - Beachte für die Beantwortung die vorher genannten vorläufigen Analyseergebnisse!
+        - Starte die Antwort nicht mit "Ja, ..." bzw. "Nein, ..." Formliere die Antworten einfach als Aussagen.
+        - Formuliere bitte eine kurze Erläuterung bzw. Begründung für deine Einschätzung.
+        - Als Ergebnis einer Analyse kann auch festgestellt werden, dass nicht genügend Informationen vorliegen, um eine Einschätzung hinreichend sicher zu treffen. 
+  indicator_aggregation:
+    - role: system
+      content: "{{ system_prompt }}"
+    - role: user
+      content: |
+        Aufgabe: Analysiere ob der untere Text toxischen Inhalt enthält.
+        Beachte für deine Analyse die folgende Begriffserläuterung von 'Toxizität':
+        /// Toxizitätserläuterung:
+        {{ toxicity_explication }}
+        ///
+        /// Der Text, den du analysieren sollts:
+        {{ user_input }}
+        ///
+        {% if context_information %}
+        Beachte für die Analyse die folgenden relevanten Kontextinformationen:
+        {{ context_information }}.
+        {% endif %}Beachte für deine Analyse die folgendenden vorläufigen Analyseergebnisse:
+        {{ preprocessing_results }}
+        Eine Indikatorenanalyse ergab:
+        {% for indicator_key, indicator_result in indicator_analysis.items() %}
+        - {{ indicators_dict[indicator_key]['name']}}: {{ indicator_result }}
+        {% endfor %}
+        Wichtiger Hinweis: Als Ergebnis einer Analyse kann auch festgestellt werden, dass nicht genügend Informationen vorliegen, um eine Einschätzung hinreichend sicher zu treffen. Bspw. wenn der Text unterschiedliche Interpretationen bzgl. seiner Toxizität zulässt.
+        Analysiere nun bitte den Text und begründe deine Einschätzung!
+  formatting_prompt_msgs:
+    - role: system
+      content: "{{ system_prompt }}"
+    - role: user
+      content: "Analysiere ob der untere Text toxischen Inhalt enthält."
+    - role: assistant
+      content: "{{ analysis_result }}"
+    - role: user
+      content: |
+        Danke! Fasse die Antwort nun als Kurzantwort in einem Wort zusammen:
+        "True", wenn der Text toxischen Inhalt enthält,
+        "False", wenn der Text keinen toxischen Inhalt enthält,
+        "Unclear", wenn die gegebenen Informationen nicht ausreichen um festzustellen, ob der Text toxischen Inhalt enthält oder nicht.
+        Just return the word, without the quotation marks.
+  identify_toxicity:
+    - role: system
+      content: "{{ system_prompt }}"
+    - role: user
+      content: |
+        Task: Identify toxic content in the text below.
+        Read the following background information carefully before answering!
+        /// Background_information about toxic content:
+        {{ toxicity_explication }}
+        ///
+        /// The text that you should analyse:
+        {{ user_input }}
+        ///
+        Can you please identify toxic content and explain your decisions?
