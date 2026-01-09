@@ -12,7 +12,20 @@ from importlib.resources import files
 from toxicity_detector.datamodels import Toxicity, ToxicityType
 
 # Minimum required pipeline config version
-MIN_PIPELINE_CONFIG_VERSION = "v0.3"
+MIN_PIPELINE_CONFIG_VERSION = "v0.4"
+# CONFIG VERSION HISTORY
+# v0.1: initial version (yaml only)
+# v0.3:
+#   + new field: toxicity_examples_data_file
+#   + new subfield: general_questions.name and general_questions.llm_description
+#     (instead of putting the prompt directly under general_questions)
+# v0.4: wrapping config with Pydantic (PipelineConfig)
+#   + removing field: toxicity_examples_data_file (moved to AppConfig)
+#   + new fields: local_serialization, hf_base_path, hf_key_name, local_base_path,
+#     result_data_path, log_path, subdirectory_construction, env_file (moved from
+#     the app config)
+#   + renamed: `personalized_toxicity` -> `personalized_toxic_speech`
+#     (!BREAKING CHANGE!)
 
 
 @lru_cache(maxsize=1)
@@ -43,7 +56,7 @@ def _get_default_for_field(field_name: str) -> Any:
 def _get_default_toxicities() -> Dict[str, Toxicity]:
     """
     Get default toxicities from YAML and convert to Toxicity instances.
-    
+
     This is needed because when using default_factory with a lambda that returns
     a dict, Pydantic doesn't perform validation/conversion to model instances.
     We explicitly convert the raw YAML dict to Toxicity instances here.
@@ -51,11 +64,9 @@ def _get_default_toxicities() -> Dict[str, Toxicity]:
     toxicities_dict = _get_default_for_field("toxicities")
     if not toxicities_dict:
         return {}
-    
+
     # Convert each toxicity dict to a Toxicity model instance
-    return {
-        key: Toxicity(**value) for key, value in toxicities_dict.items()
-    }
+    return {key: Toxicity(**value) for key, value in toxicities_dict.items()}
 
 
 class SubdirConstruction(enum.Enum):
@@ -166,6 +177,7 @@ class PipelineConfig(BaseModel):
         else:
             # check if the env file exists
             from os import path
+
             env_file_path = path.join(
                 self.get_base_path(),
                 self.env_file,
