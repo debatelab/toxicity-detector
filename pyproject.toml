@@ -1,6 +1,6 @@
 [project]
 name = "toxicity-detector"
-version = "0.1.0b1"
+version = "0.1.0b2"
 description = "An LLM-based pipeline to detect toxic speech."
 readme = "README.md"
 authors = [
