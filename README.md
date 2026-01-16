@@ -143,7 +143,7 @@ toxicity-detector app \
 
 The app will start and be accessible at `http://localhost:7860` by default (or your specified port).
 
-### Developer Mode
+### Configuration 
 
 To enable developer mode with additional configuration options, update your `config/app_config.yaml`:
 
@@ -151,7 +151,10 @@ To enable developer mode with additional configuration options, update your `con
 developer_mode: true
 ```
 
-Note: the configuration tab is only shown when `developer_mode: true`. If `force_agreement: true`, you must accept the agreement first.
+*Note:* the configuration tab is only shown when `developer_mode: true`. If `force_agreement: true`, you must accept the agreement first.
+
+Additional information about the different settings can be found in the [`config/app_config.yaml`](https://github.com/debatelab/toxicity-detector/blob/main/config/app_config.yaml).
+
 
 ## 🛠️ Configuration of the Pipeline
 
@@ -160,7 +163,7 @@ The pipeline is configured via a YAML file that is loaded into the Pydantic mode
 - Config schema/model: `src/toxicity_detector/config.py` (`class PipelineConfig`)
 - Main entry point: `src/toxicity_detector/backend.py` (`detect_toxicity(...)`)
 
-Key sections in `config/pipeline_config.yaml`:
+Key sections in [`config/pipeline_config.yaml`](https://github.com/debatelab/toxicity-detector/blob/main/config/pipeline_config.yaml):
 
 - **Model selection**: `used_chat_model` and the `models:` dictionary (provider/model/base_url + `api_key_name`)
 - **Storage**: `local_serialization`, `local_base_path`, `result_data_path`, `log_path`, `subdirectory_construction`
@@ -170,8 +173,10 @@ Key sections in `config/pipeline_config.yaml`:
     - `indicator_analysis.*` (your indicator list)
 - **Prompts**: prompt templates are configurable (see `prompt_templates` in the [default pipeline config](https://github.com/debatelab/toxicity-detector/blob/main/src/toxicity_detector/package_data/default_pipeline_config.yaml))
 
-If you want to start from a known-good baseline, the package contains a default pipeline config here:
+If you want to start from a known-good baseline, the package contains a default pipeline config with all default prompts here:
 [`src/toxicity_detector/package_data/default_pipeline_config.yaml`](https://github.com/debatelab/toxicity-detector/blob/main/src/toxicity_detector/package_data/default_pipeline_config.yaml).
+
+Additional information about the different settings can be found in the [`config/pipeline_config.yaml`](https://github.com/debatelab/toxicity-detector/blob/main/config/pipeline_config.yaml).
 
 ## 🔧 Development
 
@@ -226,7 +231,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
    uv sync
    ```
 
-   This will create a virtual environment and install all dependencies specified in `pyproject.toml`.
+   This will create a virtual environment and install all dependencies specified in `pyproject.toml`. If a `uv.lock` is present, `uv` will reproduce the environment specified in that file. If you want to start with a fresh environment and/or use other package versions, remove or update the `uv.lock` accordingly.
 
 4. **Install development dependencies** (optional):
    ```bash
@@ -290,7 +295,7 @@ uv run jupyter notebook notebooks/
 
 ### 🏛️ Funding 
 
-The Toxicity Detector was implemented as part of the project "Opportunities of AI to Strengthen Our Deliberative Culture" ([KIdeKu](https://compphil2mmae.github.io/research/kideku/)) wich was funded by the *Federal Ministry of Education, Family Affairs, Senior Citizens, Women and Youth ([BMBFSFJ](https://www.bmbfsfj.bund.de/bmbfsfj/meta/en))*.
+The Toxicity Detector was implemented as part of the project "Opportunities of AI to Strengthen Our Deliberative Culture" ([KIdeKu](https://compphil2mmae.github.io/research/kideku/)) which was funded by the *Federal Ministry of Education, Family Affairs, Senior Citizens, Women and Youth ([BMBFSFJ](https://www.bmbfsfj.bund.de/bmbfsfj/meta/en))*.
 
 <a href="https://www.bmbfsfj.bund.de/bmbfsfj/meta/en">
   <img src="./img/funding.png" alt="BMFSFJ Funding" width="40%">
