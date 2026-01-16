@@ -12,11 +12,6 @@ from .chains import (
 from .backend import (
     detect_toxicity,
     ZeroShotClassifier,
-    get_toxicity_example_data,
-    dump_pipeline_config_str,
-    config_file_exists,
-    pipeline_config_as_string,
-    pipeline_config_file_names,
     update_feedback,
     save_result,
     get_openai_chat_model,
@@ -30,6 +25,10 @@ from .config import (
     AppConfig,
     PipelineConfig,
     SubdirConstruction,
+)
+
+from .managers import (
+    ConfigManager,
 )
 
 from .datamodels import (
@@ -49,11 +48,6 @@ __all__ = [
     "ZeroShotClassifier",
     # Backend functions
     "detect_toxicity",
-    "get_toxicity_example_data",
-    "dump_pipeline_config_str",
-    "config_file_exists",
-    "pipeline_config_as_string",
-    "pipeline_config_file_names",
     "update_feedback",
     "save_result",
     "get_openai_chat_model",
@@ -65,5 +59,6 @@ __all__ = [
     "ToxicityDetectorResult",
     "PipelineConfig",
     "AppConfig",
-    "SubdirConstruction"
+    "SubdirConstruction",
+    "ConfigManager",
 ]

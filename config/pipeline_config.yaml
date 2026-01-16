@@ -11,16 +11,20 @@ used_chat_model: Llama-3.2-3B (local)
 # Controls where detection results and logs are saved.
 
 # local_serialization: If True, saves results to local filesystem. 
-# If False, saves to HuggingFace Hub (requires hf_base_path and hf_key_name).
+# If False, saves to Hugging Face Hub (requires hf_base_path and hf_key_name).
 local_serialization: True
 
-# Uncomment if needed: HuggingFace dataset path for storing results when 
-# local_serialization is False (e.g., 'datasets/username/dataset-name').
-# hf_base_path: 'datasets/username/dataset-name'
+# Uncomment if needed: Hugging Face dataset path for storing results when 
+# local_serialization is False (e.g., 'username/dataset-name').
+# hf_base_path: 'username/dataset-name'
+
+# Uncomment if needed: name of the env variable that store the API key
+# to access the Hugging Face dataset repo programmitcally
+# hf_key_name: api_key_name_hf_repo_access
 
 # local_base_path: Root directory for local storage when local_serialization 
-# is True. All paths (result_data_path, log_path) and the 
-# provided env_file are relative to this.
+# is True. All paths (result_data_path, log_path) are relative to this, but not the 
+# provided env_file.
 local_base_path: '.'
 
 # result_data_path: Directory for saving detection results (relative to base_path).

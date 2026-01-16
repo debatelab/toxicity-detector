@@ -14,10 +14,13 @@ dependencies = [
     "langchain_huggingface",
     "langchain_openai",
     "gradio",
-    "gradio_highlightedcode",
+    # "gradio_highlightedcode",
     "python-dotenv",
     "loguru",
 ]
+
+[project.scripts]
+toxicity-detector = "toxicity_detector.cli:main"
 
 [dependency-groups]
 # dependencies for dev env

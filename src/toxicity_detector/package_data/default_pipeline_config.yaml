@@ -1,5 +1,5 @@
-# Remark: Configs of version v0.3 should be compatible with v0.4 
-config_version: 'v0.4'
+# Remark: Configs of version v0.4 should be compatible with v0.5 
+config_version: 'v0.5'
 local_serialization: True
 local_base_path: '.'
 result_data_path: 'result_data'
@@ -200,7 +200,8 @@ prompt_templates:
         {% if context_information %}
         Beachte für die Analyse die folgenden relevanten Kontextinformationen:
         {{ context_information }}.
-        {% endif %}Beachte für deine Analyse die folgendenden vorläufigen Analyseergebnisse:
+        {% endif %}
+        Beachte für deine Analyse die folgendenden vorläufigen Analyseergebnisse:
         {{ preprocessing_results }}
         Eine Indikatorenanalyse ergab:
         {% for indicator_key, indicator_result in indicator_analysis.items() %}

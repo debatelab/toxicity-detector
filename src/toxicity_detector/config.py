@@ -115,7 +115,7 @@ class PipelineConfig(BaseModel):
     )
     toxicities: Dict[str, Toxicity] = Field(default_factory=_get_default_toxicities)
     config_version: str = Field(
-        default_factory=lambda: _get_default_for_field("config_version") or "v0.4"
+        default_factory=lambda: _get_default_for_field("config_version")
     )
     used_chat_model: str
     description: str | None = Field(
@@ -320,16 +320,15 @@ class PipelineConfig(BaseModel):
             config = PipelineConfig(**yaml.safe_load(f.read()))
         return config
 
-    @staticmethod
-    def from_hf(file_path: str) -> "PipelineConfig":
-        fs = HfFileSystem()
-        with fs._open(file_path, "rb", encoding="utf-8") as f:
-            return PipelineConfig(**yaml.safe_load(f.read()))
 
-
-# TODO: remove defaults
+# TODO: mv defaults to PKG data YAML file and load them during init as defaults
+# TODO: add all other UI texts here (to make them configurable)
 class UITexts(BaseModel):
     trigger_warning: dict[str, str] = {
+        "checkbox_label": (
+            "Die Hinweise habe ich zur Kenntnis genommen und der Speicherung "
+            "der Daten stimme ich zu."
+        ),
         "message": (
             "# Benutzunghinweise (*!vorläufige Formulierung!*)\n\n"
             "+ **Triggerwarnung:** Die Toxizitätdetektorapp enthält in Form "
@@ -355,15 +354,18 @@ class UITexts(BaseModel):
 
 class AppConfig(BaseModel):
     developer_mode: bool = False
-    pipeline_config_version: str = "v0.3"
-    default_pipeline_config_file: str = "model_config_cv0.3_2024-11-24_v0.3.yaml"
-    local_pipeline_config: bool = True
-    local_pipeline_config_base_path: str | None = None
-    hf_pipeline_config_base_path: str | None = None
-    toxicity_examples_hf_base_path: str = "toxicity_example_data"
-    toxicity_examples_data_file: str = "toxicity_examples_detox_germeval21_n10000.csv"
-    toxicity_examples_key_name: str | None = None
-    pipeline_config_key_name: str | None = None
+    pipeline_config_version: str | None = None
+    toxicity_examples_data_file: str | None = None
+    local_serialization: bool | None = None
+    hf_base_path: str | None = None
+    hf_key_name: str | None = None
+    local_base_path: str | None = None
+    config_path: str = "configs"
+    env_file: str | None = None
+    pipeline_config_file: str
+    force_agreement: bool = False
+
+    # TODO: mv defaults to PKG data YAML file and load them during init as defaults
     feedback: Dict[str, Any] = {
         "likert_scale": {
             "absolutely_correct": "Stimmt absolut",
@@ -374,10 +376,8 @@ class AppConfig(BaseModel):
         }
     }
     ui_texts: UITexts = UITexts()
-    env_file: str | None = None
 
-    @model_validator(mode="after")
-    def load_env_file(self) -> Self:
+    def load_env_file(self):
         if self.env_file is None:
             logger.warning(
                 "No environment file with API keys specified for App Config."
@@ -402,81 +402,41 @@ class AppConfig(BaseModel):
 
                 load_dotenv(self.env_file)
             logger.info(f"Loaded environment variables from '{self.env_file}'")
-        return self
 
     @model_validator(mode="after")
-    def validate_toxicity_examples_key_name(self) -> Self:
-        if (
-            not self.toxicity_examples_key_name
-            or len(self.toxicity_examples_key_name.strip()) == 0
-        ):
-            logger.warning(
-                f"""
-                toxicity_examples_key_name not set for accessing \
-                toxicity_examples_hf_base_path '{self.toxicity_examples_hf_base_path}'
-                """
-            )
+    def _load_env_file(self) -> Self:
+        self.load_env_file()
         return self
 
-    def get_pipeline_config_path(self) -> str:
-        if self.local_pipeline_config:
-            base_path = self.local_pipeline_config_base_path
-        else:
-            base_path = self.hf_pipeline_config_base_path
-        assert base_path is not None
-        return base_path
+    # def get_pipeline_config_path(self) -> str:
+    #     if self.local_pipeline_config:
+    #         base_path = self.local_pipeline_config_base_path
+    #     else:
+    #         base_path = self.hf_pipeline_config_base_path
+    #     assert base_path is not None
+    #     return base_path
 
-    def get_default_pipeline_config(self) -> PipelineConfig:
-        if self.local_pipeline_config:
-            file_path = os.path.join(
-                self.get_pipeline_config_path(), self.default_pipeline_config_file
-            )
-            return PipelineConfig.from_file(file_path)
-        else:
-            if self.pipeline_config_key_name:
-                fs = HfFileSystem(token=os.environ[self.pipeline_config_key_name])
-            else:
-                fs = HfFileSystem()
-            file_path = os.path.join(
-                "hf://datasets",
-                self.get_pipeline_config_path(),
-                self.default_pipeline_config_file,
-            ).replace("\\", "/")
-            with fs._open(file_path, "rt", encoding="utf_8") as file:
-                return PipelineConfig(**yaml.safe_load(file))
+    # def get_default_pipeline_config(self) -> PipelineConfig:
+    #     if self.local_pipeline_config:
+    #         file_path = os.path.join(
+    #             self.get_pipeline_config_path(), self.default_pipeline_config_file
+    #         )
+    #         return PipelineConfig.from_file(file_path)
+    #     else:
+    #         if self.pipeline_config_key_name:
+    #             fs = HfFileSystem(token=os.environ[self.pipeline_config_key_name])
+    #         else:
+    #             fs = HfFileSystem()
+    #         file_path = os.path.join(
+    #             "hf://datasets",
+    #             self.get_pipeline_config_path(),
+    #             self.default_pipeline_config_file,
+    #         ).replace("\\", "/")
+    #         with fs._open(file_path, "rt", encoding="utf_8") as file:
+    #             return PipelineConfig(**yaml.safe_load(file))
 
     @staticmethod
     def from_file(file_path: str) -> "AppConfig":
         with open(file_path, encoding="utf_8") as f:
             config = AppConfig(**yaml.safe_load(f))
         return config
-
-    @model_validator(mode="after")
-    def validate_pipeline_config_base_path(self) -> Self:
-        if self.local_pipeline_config:
-            if not self.local_pipeline_config_base_path:
-                raise ValueError(
-                    "local_pipeline_config_base_path parameter must be set."
-                )
-            if self.hf_pipeline_config_base_path:
-                logger.warning(
-                    "hf_pipeline_config_base_path parameter will be ignored."
-                )
-        else:
-            if not self.hf_pipeline_config_base_path:
-                raise ValueError("hf_pipeline_config_base_path must be set.")
-            if (
-                not self.pipeline_config_key_name
-                or len(self.pipeline_config_key_name.strip()) == 0
-            ):
-                logger.warning(
-                    f"""
-                    pipeline_config_key_name not set for accessing \
-                    hf_pipeline_config_base_path '{self.hf_pipeline_config_base_path}'
-                    """
-                )
-            if self.local_pipeline_config_base_path:
-                logger.warning(
-                    "local_pipeline_config_base_path parameter will be ignored."
-                )
-        return self

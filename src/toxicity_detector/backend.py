@@ -277,6 +277,7 @@ class ZeroShotClassifier(LLM):
         return f"Zero Shot Classifier ({self.model})"
 
 
+# TODO: Move serialization logic to separate manager class 
 def _current_subdir(subdirectory_construction: str | None) -> str:
     if (
         subdirectory_construction is None
@@ -350,7 +351,7 @@ def _yaml_load(
         # Strip 'datasets/' prefix if present to avoid duplication
         clean_file_path = file_path
         if file_path.startswith("datasets/"):
-            clean_file_path = file_path[len("datasets/") :]
+            clean_file_path = file_path[len("datasets/"):]
         file_path = os.path.join("hf://datasets", clean_file_path).replace("\\", "/")
         if key_name:
             fs = HfFileSystem(token=os.environ[key_name])
@@ -374,7 +375,7 @@ def _str_load(
         # Strip 'datasets/' prefix if present to avoid duplication
         clean_file_path = file_path
         if file_path.startswith("datasets/"):
-            clean_file_path = file_path[len("datasets/") :]
+            clean_file_path = file_path[len("datasets/"):]
         file_path = os.path.join("hf://datasets", clean_file_path).replace("\\", "/")
         if key_name:
             fs = HfFileSystem(token=os.environ[key_name])
@@ -386,30 +387,6 @@ def _str_load(
             f_str = f.read().decode("utf-8")
     logger.info(f"Got file {file_path}")
     return f_str
-
-
-def get_toxicity_example_data(
-    app_config: AppConfig, data_file: str | None = None
-) -> pd.DataFrame:
-    if not data_file:
-        data_file = app_config.toxicity_examples_data_file
-    example_data_file_path = "/".join(
-        [
-            "hf://datasets",
-            app_config.toxicity_examples_hf_base_path,
-            app_config.toxicity_examples_data_file,
-        ]
-    )
-
-    if app_config.toxicity_examples_key_name:
-        fs = HfFileSystem(token=os.environ[app_config.toxicity_examples_key_name])
-    else:
-        fs = HfFileSystem()
-    with fs._open(example_data_file_path, "rb") as f:
-        example_data_df = pd.read_csv(f)
-    logger.info("Loading examples done.")
-    return pd.DataFrame(example_data_df[["text", "source"]])
-    # return example_data_df['text'].tolist()
 
 
 def _str_dump(
@@ -434,76 +411,6 @@ def _str_dump(
         # HfFileSystem requires binary mode
         with fs.open(file_path, "wb") as f:
             f.write(file_str.encode("utf-8"))
-
-
-def dump_pipeline_config_str(
-    file_name: str, pipeline_config_file_str: str, app_config: AppConfig
-):
-    file_path = os.path.join(
-        app_config.get_pipeline_config_path(),
-        file_name,
-    )
-    _str_dump(file_path, pipeline_config_file_str, app_config.local_pipeline_config)
-
-
-def config_file_exists(app_config: AppConfig, config_file_name: str) -> bool:
-    local_serialization = app_config.local_pipeline_config
-    if local_serialization:
-        config_file_path = os.path.join(
-            app_config.get_pipeline_config_path(), config_file_name
-        )
-        return os.path.isfile(config_file_path)
-    else:
-        config_file_path = "/".join(
-            ["hf://datasets", app_config.get_pipeline_config_path(), config_file_name]
-        )
-        if app_config.pipeline_config_key_name:
-            fs = HfFileSystem(token=os.environ[app_config.pipeline_config_key_name])
-        else:
-            fs = HfFileSystem()
-        return fs.exists(config_file_path)
-
-
-def pipeline_config_as_string(
-    app_config: AppConfig, pipeline_config_file_name: str | None = None
-) -> str:
-    if not pipeline_config_file_name:
-        pipeline_config_file_name = app_config.default_pipeline_config_file
-    return _str_load(
-        os.path.join(app_config.get_pipeline_config_path(), pipeline_config_file_name),
-        app_config.local_pipeline_config,
-        app_config.pipeline_config_key_name,
-    )
-
-
-def pipeline_config_file_names(
-    app_config: AppConfig, config_version: str | None = None
-):
-    local_serialization = app_config.local_pipeline_config
-    if not config_version:
-        config_version = app_config.pipeline_config_version
-    config_file_names = []
-
-    config_dir_path = app_config.get_pipeline_config_path()
-    if local_serialization:
-        for config_file_path in glob(f"{config_dir_path}/*.yaml"):
-            with open(config_file_path, "rt", encoding="utf-8") as file:
-                file_dict = yaml.safe_load(file)
-                if file_dict.get("config_version") == config_version:
-                    config_file_names.append(os.path.basename(config_file_path))
-    else:
-        if app_config.pipeline_config_key_name:
-            fs = HfFileSystem(token=os.environ[app_config.pipeline_config_key_name])
-        else:
-            fs = HfFileSystem()
-        config_dir_path = f"hf://datasets/{config_dir_path}".replace("\\", "/")
-        for config_file_path in fs.glob(f"{config_dir_path}/*.yaml"):
-            with fs._open(config_file_path, "rb", encoding="utf-8") as file:
-                file_dict = yaml.safe_load(file)
-                if file_dict.get("config_version") == config_version:
-                    config_file_names.append(os.path.basename(config_file_path))
-
-    return config_file_names
 
 
 def update_feedback(
