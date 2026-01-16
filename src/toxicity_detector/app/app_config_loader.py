@@ -55,7 +55,7 @@ def init_app_config(config_path=None, config_type="app"):
 
     if config_type == "app":
         app_config = AppConfig.from_file(config_path)
-        # If local version of config_path exists, 
+        # If local version of config_path exists,
         # re-init None values from pipeline config values and validate
         pipeline_config_path = os.path.join(
             app_config.config_path,

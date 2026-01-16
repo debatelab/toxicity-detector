@@ -4,7 +4,6 @@ import os
 import yaml
 from glob import glob
 from typing import Dict, List, Optional
-from pathlib import Path
 from huggingface_hub import HfFileSystem
 from loguru import logger
 import pandas as pd
@@ -81,7 +80,8 @@ class ConfigManager:
         # Warn if path contains '..' as it may be unexpected
         if ".." in path:
             logger.warning(
-                f"local_base_path '{path}' contains '..' which resolves to: '{normalized}'. "
+                f"local_base_path '{path}' contains '..' which "
+                f"resolves to: '{normalized}'. "
                 f"Ensure this is the intended directory."
             )
 
@@ -113,7 +113,8 @@ class ConfigManager:
         # Warn if path contains '..' - this is problematic for HF paths
         if ".." in path:
             logger.warning(
-                f"hf_base_path '{path}' contains '..' which is resolved to: '{normalized}'. "
+                f"hf_base_path '{path}' contains '..' which is resolved "
+                f"to: '{normalized}'. "
                 f"This may not work as expected with HuggingFace repositories. "
                 f"Consider using absolute repository paths like 'user/repo'."
             )
@@ -195,7 +196,7 @@ class ConfigManager:
 
     def _normalize_hf_path(self, path: str) -> str:
         """Remove 'datasets/' prefix if present to avoid duplication."""
-        return path[len("datasets/") :] if path.startswith("datasets/") else path
+        return path[len("datasets/"):] if path.startswith("datasets/") else path
 
     def _get_config_base_path(self) -> str:
         """Get the base path where config files are located."""

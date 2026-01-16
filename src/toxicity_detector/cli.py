@@ -2,10 +2,9 @@
 
 import argparse
 import sys
-from pathlib import Path
 from loguru import logger
 
-from toxicity_detector import detect_toxicity, PipelineConfig, AppConfig
+from toxicity_detector import detect_toxicity, PipelineConfig
 from toxicity_detector.datamodels import ToxicityType
 
 
@@ -128,7 +127,10 @@ Examples:
         "--toxicity-type",
         "-T",
         default="hatespeech",
-        help="Type of toxicity to detect 'personlized_toxicity' or 'hatespeech' (default: 'hatespeech')",
+        help=(
+            "Type of toxicity to detect 'personlized_toxicity' or "
+            "'hatespeech' (default: 'hatespeech')"
+        ),
     )
     detect_parser.add_argument(
         "--source",
