@@ -18,8 +18,10 @@ pipeline_config_version: v0.5
 #    via the UI in the developer mode. The serializiation of pipeline
 #    results is configured by the respective fields in the pipeline configuration.
 # ATTENTION: `local_base_path`, `hf_base_path`and `hf_key_name`
-#    and `env_file` can be left unset here. In this case the will inherit the 
-#    value as they are defined in the specified pipeline config.
+#    and `env_file` can be left unset here. In this case, (which presumes the 
+#    app is initialized by passing a local config file path) the  app will 
+#    inherit the values as they are defined in the specified pipeline config.
+
 
 env_file: ../.env
 local_serialization: False

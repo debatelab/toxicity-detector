@@ -3,6 +3,7 @@
 import os
 import gradio as gr
 from pathlib import Path
+from loguru import logger
 
 from toxicity_detector import ConfigManager
 from toxicity_detector.config import AppConfig, PipelineConfig
@@ -54,47 +55,62 @@ def init_app_config(config_path=None, config_type="app"):
 
     if config_type == "app":
         app_config = AppConfig.from_file(config_path)
+        # If local version of config_path exists, 
         # re-init None values from pipeline config values and validate
-        pipeline_config = PipelineConfig.from_file(
-            os.path.join(
-                app_config.config_path,
-                app_config.pipeline_config_file
-            )
+        pipeline_config_path = os.path.join(
+            app_config.config_path,
+            app_config.pipeline_config_file
         )
+        if os.path.exists(pipeline_config_path):
+            pipeline_config = PipelineConfig.from_file(
+                pipeline_config_path
+            )
+            if app_config.local_serialization is None:
+                if pipeline_config.local_serialization is None:
+                    raise gr.Error(
+                        "local_serialization must be set in either "
+                        "app config or pipeline config!"
+                    )
+                app_config.local_serialization = pipeline_config.local_serialization
+            if app_config.local_base_path is None:
+                if (
+                    app_config.local_serialization
+                    and pipeline_config.local_base_path is None
+                ):
+                    raise gr.Error(
+                        "local_base_path must be set in either "
+                        "app config or pipeline config when "
+                        "local_serialization is True!"
+                    )
+                app_config.local_base_path = pipeline_config.local_base_path
+            if app_config.hf_base_path is None:
+                if (
+                    not app_config.local_serialization
+                    and pipeline_config.hf_base_path is None
+                ):
+                    raise gr.Error(
+                        "hf_base_path must be set in either "
+                        "app config or pipeline config when "
+                        "local_serialization is False!"
+                    )
+                app_config.hf_base_path = pipeline_config.hf_base_path
+            if app_config.hf_key_name is None:
+                app_config.hf_key_name = pipeline_config.hf_key_name
+            if app_config.env_file is not None:
+                app_config.env_file = pipeline_config.env_file
+                app_config.load_env_file()
+        else:
+            logger.info(
+                "Passed local pipeline config file does not exist locally. "
+                "Skipping re-init of AppConfig None values from PipelineConfig."
+            )
+
+        # validate whether local_serialization is set (edge case)
         if app_config.local_serialization is None:
-            if pipeline_config.local_serialization is None:
-                raise gr.Error(
-                    "local_serialization must be set in either "
-                    "app config or pipeline config!"
-                )
-            app_config.local_serialization = pipeline_config.local_serialization
-        if app_config.local_base_path is None:
-            if (
-                app_config.local_serialization
-                and pipeline_config.local_base_path is None
-            ):
-                raise gr.Error(
-                    "local_base_path must be set in either "
-                    "app config or pipeline config when "
-                    "local_serialization is True!"
-                )
-            app_config.local_base_path = pipeline_config.local_base_path
-        if app_config.hf_base_path is None:
-            if (
-                not app_config.local_serialization
-                and pipeline_config.hf_base_path is None
-            ):
-                raise gr.Error(
-                    "hf_base_path must be set in either "
-                    "app config or pipeline config when "
-                    "local_serialization is False!"
-                )
-            app_config.hf_base_path = pipeline_config.hf_base_path
-        if app_config.hf_key_name is None:
-            app_config.hf_key_name = pipeline_config.hf_key_name
-        if app_config.env_file is not None:
-            app_config.env_file = pipeline_config.env_file
-            app_config.load_env_file()
+            raise gr.Error(
+                "local_serialization must be set in either "
+                "app config or pipeline config!"
+            )
 
         config_manager = ConfigManager(
             app_config.local_serialization,
