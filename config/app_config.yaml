@@ -1,61 +1,139 @@
+# =============================================================================
+# DEVELOPER MODE
+# =============================================================================
+# developer_mode: Enable advanced features in the Gradio UI
+#   - true: Shows configuration tab where you can edit, load, and save pipeline 
+#           configs dynamically. Shows developer-specific output fields.
+#   - false: Hides configuration tab and developer features. Recommended for 
+#            production/end-user deployment.
 developer_mode: True
-# Currently used version for yaml output and yaml model config format (in case we change the format during test phases)
-# (version <1.0 indicates versions before public release of the demo app) 
-# pipeline_config_version: If this field is set, the available configurations 
-# that can dynamically loaded in the developer mode are filtered to match the 
-# given pipeline_config_version
+
+# pipeline_config_version: Filter which pipeline configs appear in the config dropdown
+#   - Set to a version string (e.g., "v0.5") to show only matching configs
+#   - Set to null to show all available pipeline configurations
+#   - Useful when testing specific config versions or maintaining compatibility
 pipeline_config_version: v0.5
 
-# TODO: only name (rest relative to base and config file path)
+# =============================================================================
+# ENVIRONMENT AND API KEYS
+# =============================================================================
+# env_file: Path to .env file containing API keys for LLM providers
+#   - Relative paths are resolved from directory where the pipeline is called.
+#   - The file should contain environment variables like:
+#     OPENAI_API_KEY=your_key_here
+#     ANTHROPIC_API_KEY=your_key_here
+#   - Set to null/comment if you set environment variables differently (e.g., system-wide)
+# env_file: ../.env
 
 # =============================================================================
-# SERIALIZATION
+# SERIALIZATION CONFIGURATION
 # =============================================================================
-# If `local_serialization` is True configs are (de)serialized 
-# locally based on `local_base_path`. If False, configs are
-# (de)serialized on/from Hugging Face as determined by `hf_base_path`.
-# ATTENTION: These value configure the handling of pipeline configuration files
-#    via the UI in the developer mode. The serializiation of pipeline
-#    results is configured by the respective fields in the pipeline configuration.
-# ATTENTION: `local_base_path`, `hf_base_path`and `hf_key_name`
-#    and `env_file` can be left unset here. In this case, (which presumes the 
-#    app is initialized by passing a local config file path) the  app will 
-#    inherit the values as they are defined in the specified pipeline config.
+# These settings control where pipeline configurations and example data are stored:
+# - Local mode: Files stored on your local filesystem
+# - HuggingFace mode: Files stored in a HuggingFace dataset repository
+#
+# NOTE: These settings only affect pipeline configuration file management in 
+# developer mode. The serialization of detection results is controlled by 
+# settings in the pipeline configuration file itself.
+#
+# You can leave local_base_path, hf_base_path, hf_key_name unset (null) to 
+# inherit values from the pipeline configuration file. However, this presumes
+# the a locally stored pipeline configuration file is passed to app.launch_app
+# (for instace, by calling the CLI).
 
+# local_serialization: Choose storage backend
+#   - True: Use local filesystem (files stored relative to local_base_path)
+#   - False: Use HuggingFace datasets (files stored relative to hf_base_path)
+local_serialization: True
 
-env_file: ../.env
-local_serialization: False
+# local_base_path: Base directory for local file storage
+#   - Only used when local_serialization=true
+#   - Relative paths are resolved from this config file's directory
+#   - Use '.' for current directory
+#   - Example: './my_configs' or '../shared_configs'
 local_base_path: '.'
-# hf_base_path: 'datasets/DebateLabKIT/toxicity-detector-appdata'
-hf_base_path: 'scacean/dummy-for-testing'
-hf_key_name: 'test_token_hf_dataset_dummy_for_testing'
-# config_path: Path relative base_path where possible additional 
-# pipeline configurations reside that can be loaded dynamically in the app
-# (if developer_mode is set to True)
-# ATTENTION: Defaults to "configs" if not set
-# Uncomment if needed:
-# config_path: 'configs'
-# toxicity_examples_data_file: Path relative to base path. If None the respective
-# UI button will be invalidated.
-# toxicity_examples_data_file: 'configs/toxicity_examples_detox_germeval21_n10000.csv'
-toxicity_examples_data_file: 'toxicity_examples_detox_germeval21_n10000.csv'
-# toxicity_examples_data_file: 'result_data/toxicity_examples_detox_germeval21_n10000.csv'
-pipeline_config_file: pipeline_config_cv0.4.yaml
 
-# UI
-force_agreement: True
+# hf_base_path: HuggingFace dataset path for remote storage
+#   - Only used when local_serialization=false
+#   - Format: 'username/dataset-name' or 'datasets/username/dataset-name'
+#   - The dataset must exist and you must have write access
+#   - Example: 'myorg/toxicity-configs' or 'datasets/myorg/toxicity-configs'
+# hf_base_path: 'myorg/toxicity-appdata'
 
-# Uncomment the following fields to define/alter some of the UI texts
+# hf_key_name: Environment variable name containing your HuggingFace API token
+#   - Only used when local_serialization=false
+#   - The token must have write access to the dataset specified in hf_base_path
+#   - The variable should be defined in your env_file or system environment
+#   - Example: If set to 'HF_TOKEN', the app looks for os.environ['HF_TOKEN']
+# hf_key_name: 'HF_TOKEN'
+
+# =============================================================================
+# FILE PATHS
+# =============================================================================
+# config_path: Directory name containing pipeline configuration files
+#   - Relative to base_path (local_base_path or hf_base_path)
+#   - In developer mode, configs in this directory appear in the dropdown
+#   - Defaults to "configs" if not specified
+#   - Example: Set to 'pipeline_configs' to use a different folder name
+# Uncomment to override default:
+# config_path: 'pipeline_configs'
+
+# toxicity_examples_data_file: CSV file with example toxic texts for testing
+#   - Relative to base_path (local_base_path or hf_base_path)
+#   - Enables "Random Example" button in the UI to load test cases
+#   - Set to null to disable the random example feature
+#   - File should be a CSV with columns: 'text', 'source'
+# toxicity_examples_data_file: 'toxicity_examples.csv'
+
+# pipeline_config_file: Default pipeline configuration to load on startup
+#   - Filename only (should be in the config_path directory)
+#   - This config defines toxicity detection behavior, LLM settings, prompts, etc.
+#   - Must be a valid pipeline configuration file (see pipeline config docs)
+pipeline_config_file: pipeline_config.yaml
+
+# =============================================================================
+# USER INTERFACE SETTINGS
+# =============================================================================
+# force_agreement: Require users to accept terms before using the detector
+#   - True: Shows an agreement tab that must be accepted before accessing features
+#   - False: Users can immediately access the toxicity detector
+#   - Recommended for research/data collection contexts where consent is needed
+force_agreement: False
+
+# =============================================================================
+# UI TEXT CUSTOMIZATION (Optional)
+# =============================================================================
+# Uncomment and modify these sections to customize the user interface texts.
+# All fields use Markdown formatting for rich text display.
+
+# feedback: Customize feedback rating scale labels
+#   - These labels appear when users rate the detector's performance
+#   - Default values are in German; adjust for your language/context
 # feedback:
 #   likert_scale: 
 #     absolutely_correct: "Stimmt absolut"
 #     correct: "Stimmt"
 #     suspension: "Unklar"
 #     incorrect: "Stimmt nicht"
-#     absolutely_incorrect: "Stimmt überhaupt nicht" 
+#     absolutely_incorrect: "Stimmt überhaupt nicht"
+
+# ui_texts: Customize main UI text elements
 # ui_texts:
+#   # app_head: Header text shown at the top of the application
+#   #   - Supports Markdown formatting (e.g., # for headers, ** for bold)
+#   app_head: |
+#     # 📣 Detektor für toxische Sprache
+#     In dieser Demoapp kannst Du ausprobieren, wie gut Large Language Models 
+#     Toxizität detektieren können.
+#
+#   # trigger_warning: Text shown in the agreement tab (when force_agreement=true)
 #   trigger_warning:
+#     # checkbox_label: Label for the agreement checkbox
 #     checkbox_label: "Die Hinweise habe ich zur Kenntnis genommen und der Speicherung der Daten stimme ich zu."
+#     
+#     # message: Full agreement/warning message text
+#     #   - Use | for multi-line text
+#     #   - Supports Markdown formatting
 #     message: |
 #       # Benutzunghinweise (*!vorläufige Formulierung!*)
 #       + **Triggerwarnung:** Die Toxizitätdetektorapp enthält in Form von Beispielen Inhalte, die anstößig oder beunruhigend sein können. Alle Materialien dienen der Unterstützung von Forschungsarbeiten zur Verbesserung der Methoden zur Erkennung von Toxizität. Die enthaltenen Beispiele für Toxizität geben insbesondere nicht wieder, wie die Autoren über bestimmte Identitätsgruppen bzw. Personen denken. Die Beispiele stammen aus dem Korpus ...
