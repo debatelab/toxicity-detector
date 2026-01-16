@@ -119,7 +119,7 @@ print(result.answer['contains_toxicity'])
 
 We also provide an [example notebook](https://github.com/debatelab/toxicity-detector/blob/main/toxicity_pipeline_intro.ipynb) that demonstrates how to run the toxicity detection pipeline with a Hugging Face API key.
 
-## Using the Gradio Demoapp
+## 🧭 Using the Gradio Demoapp
 
 The project includes a Gradio web interface for interactive toxicity detection.
 
