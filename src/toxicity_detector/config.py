@@ -24,9 +24,9 @@ MIN_PIPELINE_CONFIG_VERSION = "v0.4"
 #   + new fields: local_serialization, hf_base_path, hf_key_name, local_base_path,
 #     result_data_path, log_path, subdirectory_construction, env_file (moved from
 #     the app config)
-#   + renamed: `personalized_toxicity` -> `personalized_toxic_speech`
+#   + renamed: `personalized_toxic_speech` -> `personalized_toxicity`
 #     (!BREAKING CHANGE!)
-# v0.5: moving remaing hard coded prompts to config
+# v0.5: moving remaining hard coded prompts to config
 #   + only adding fields -> no breaking changes
 #   + new fields: prompts.
 
