@@ -176,12 +176,15 @@ prompt_templates:
         ///
         {% if context_information %}
         Beachte für die Analyse die folgenden relevanten Kontextinformationen:
-        {{ context_information }}.
-        {% endif %}Ein vorherige Analyse ergab bereits die folgenden vorläufigen Analyseergebnisse:
+        /// Kontextinformationen:
+        {{ context_information }}
+        ///
+        {% endif %}
+        Eine vorherige Analyse ergab bereits die folgenden vorläufigen Analyseergebnisse:
         {{ preprocessing_results }}
         Hinweise:
         - Beachte für die Beantwortung die vorher genannten vorläufigen Analyseergebnisse!
-        - Starte die Antwort nicht mit "Ja, ..." bzw. "Nein, ..." Formliere die Antworten einfach als Aussagen.
+        - Starte die Antwort nicht mit "Ja, ..." bzw. "Nein, ..." Formuliere die Antworten einfach als Aussagen.
         - Formuliere bitte eine kurze Erläuterung bzw. Begründung für deine Einschätzung.
         - Als Ergebnis einer Analyse kann auch festgestellt werden, dass nicht genügend Informationen vorliegen, um eine Einschätzung hinreichend sicher zu treffen. 
   indicator_aggregation:
@@ -194,14 +197,14 @@ prompt_templates:
         /// Toxizitätserläuterung:
         {{ toxicity_explication }}
         ///
-        /// Der Text, den du analysieren sollts:
+        /// Der Text, den du analysieren sollst:
         {{ user_input }}
         ///
         {% if context_information %}
         Beachte für die Analyse die folgenden relevanten Kontextinformationen:
         {{ context_information }}.
         {% endif %}
-        Beachte für deine Analyse die folgendenden vorläufigen Analyseergebnisse:
+        Beachte für deine Analyse die folgenden vorläufigen Analyseergebnisse:
         {{ preprocessing_results }}
         Eine Indikatorenanalyse ergab:
         {% for indicator_key, indicator_result in indicator_analysis.items() %}
