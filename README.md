@@ -7,10 +7,15 @@ An LLM-based pipeline to detect toxic speech.
 ### ✨ Key Features
 
 🔧 Highly configurable via YAML configuration files
+
 🎯 Multi-stage analysis with preparatory questions and configurable indicators
+
 🖥️ Multiple interfaces: CLI, Python API, and interactive Gradio web UI
+
 💾 Built-in result serialization for auditing and analysis
+
 🔌 Flexible model support: Compatible with OpenAI, Hugging Face, and other LangChain-supported providers
+
 📊 Transparent reasoning: Get detailed explanations alongside toxicity verdicts
 
 The Toxicity Detector is a configurable pipeline that uses a Large Language Model (LLM) to analyze a text and decide whether it contains toxic speech.
